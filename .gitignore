@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# env: l'esempio si committa
+!.env.example
+
+# segreti e certificati: mai nel repo
+*.p12
+*.pfx
+*.key
+*.crt
+*.p7m
+/secrets/

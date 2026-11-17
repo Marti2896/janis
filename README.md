@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SDI Channel
 
-## Getting Started
+Canale telematico SDICoop per la fatturazione elettronica italiana: generazione, firma CAdES-BES e invio fatture al SdI, ricezione di esiti e fatture passive, multi-tenant con API key per cliente, dashboard operativa.
 
-First, run the development server:
+Stato: **scheletro**. Le feature dell'MVP (vedi `.fabbrica/brain/business-rules.md`) non sono ancora implementate.
+
+## Avvio
+
+Requisiti: Node ≥ 24, Docker.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Un solo comando: crea `.env` da `.env.example` se manca, accende Postgres e Redis (docker compose), applica le migrazioni, avvia API e dashboard. `Ctrl+C` ferma tutto.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Pezzo | Porta |
+| --- | --- |
+| Dashboard Next.js | 3000 |
+| API Fastify (`/health`) | 4000 |
+| PostgreSQL | 54320 |
+| Redis | 63790 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Comandi
 
-## Learn More
+- `npm test` – Vitest
+- `npm run typecheck` · `npm run lint` · `npm run build`
+- `npm run db:migrate` – applica `db/migrations/*.sql`
 
-To learn more about Next.js, take a look at the following resources:
+## Struttura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `src/` – dashboard Next.js (App Router, Tailwind, shadcn/ui in `src/components/ui`)
+- `server/` – backend Fastify (TypeScript eseguito direttamente da Node 24, import con estensione `.ts`)
+- `db/migrations/` – migrazioni SQL numerate
+- `scripts/` – `dev.mjs` (avvio completo), `migrate.mjs`
+- `.fabbrica/brain/` – convenzioni, design e regole di business
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Ambienti SdI
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`SDI_ENV=demo|production` sceglie quale set di endpoint (`SDI_DEMO_*` / `SDI_PROD_*`) usare. Segreti e certificati vanno nel vault, mai nel repo.
