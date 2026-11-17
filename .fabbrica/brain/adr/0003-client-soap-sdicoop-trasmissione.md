@@ -10,3 +10,6 @@ Stato: accettata (run #405)
 - Mutua TLS: il client accetta un `dispatcher` undici iniettato; il certificato client arriverà dal vault, non in questa run.
 - Retry: backoff esponenziale con jitter, solo su errore di rete, timeout o HTTP 5xx/503; mai su risposta applicativa (Errore SdI o Fault). Parametri configurabili (tentativi, base, tetto).
 - Idempotenza: prima di inviare si marca la fattura `sending` con una transizione condizionale in DB (solo da `ready`); un secondo invio dello stesso `NomeFile` viene rifiutato. Se la rete cade dopo l'invio senza risposta, lo stato resta `send_unknown` e non si ritenta in automatico (il duplicato verrebbe scartato da SdI con EI01/00404 ma va evitato).
+
+## Aggiornamento (run #405, implementazione)
+Struttura in `src/sdi/client/`: `soap.ts` (`riceviFile`: busta SOAP 1.1, fetch, parsing risposta), `retry.ts` (backoff esponenziale con jitter), `emit.ts` (`emitInvoice` e `repairInvoice`), `repo.ts` (interfaccia `InvoiceRepo` iniettata). L'implementazione Postgres è `src/server/invoice-repo.ts` (`createInvoiceRepo(pool)`). La transizione a `sending` parte da `signed` (non `ready`): gli stati reali sono quelli della migrazione 0002.

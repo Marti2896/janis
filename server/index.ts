@@ -2,6 +2,7 @@ import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { checkDatabase, createPool } from "./db.ts";
 import { checkRedis } from "./redis.ts";
+import { registerSdiReceiver } from "../src/server/notifications.ts";
 
 const config = loadConfig();
 const pool = createPool(config.databaseUrl);
@@ -13,6 +14,8 @@ const app = buildApp({
     redis: () => checkRedis(config.redisUrl),
   },
 });
+
+registerSdiReceiver(app, { pool, sdiEnv: config.sdiEnv });
 
 app.addHook("onClose", async () => {
   await pool.end();

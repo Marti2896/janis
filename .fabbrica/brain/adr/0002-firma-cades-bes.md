@@ -12,3 +12,6 @@ Stato: accettata (run #405)
 ## Alternative scartate
 - `node-forge`: manca il supporto a signing-certificate-v2.
 - Shell verso `openssl cms`: dipendenza di sistema e gestione chiavi su file.
+
+## Aggiornamento (run #405, implementazione)
+La libreria effettivamente usata è `node-forge`, non `pkijs`: forge fornisce hash SHA-256, firma RSA PKCS#1 v1.5 e parsing dei certificati, mentre la struttura CMS (ContentInfo/SignedData/SignerInfo) con gli attributi firmati content-type, signing-time, message-digest e signing-certificate-v2 è composta con `forge.asn1` (forge.pkcs7 non accetta attributi firmati personalizzati). Codice in `src/sdi/sign/cades.ts`, certificato di test generato a runtime in `src/sdi/sign/test-cert.ts`.
