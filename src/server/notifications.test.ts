@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
+import { buildDemoNotificationSoap, buildDemoNotificationXml } from "../sdi/messaggi/demo-notification.ts";
 import { buildApp } from "../../server/app.ts";
 import { createInvoiceRepo } from "./invoice-repo.ts";
 import { RICEZIONE_PATH, parseNotification, registerSdiReceiver, soapOperation } from "./notifications.ts";
@@ -12,14 +13,12 @@ function soap(op: string, inner: string, id = "123"): string {
   return `<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><types:${op} xmlns:types="http://www.fatturapa.it/TrasmissioneFatture"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>IT01234567890_00001_RC_001.xml</NomeFile><File>${b64(inner)}</File></types:${op}></soapenv:Body></soapenv:Envelope>`;
 }
 
-// Firma xmldsig minimale ma valida per lo schema: la verifica crittografica non e in perimetro.
-const SIG = `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI=""><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>AAAA</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>AAAA</ds:SignatureValue></ds:Signature>`;
 
-const rcXml =(id: string, nome: string, msgId = "M1") =>
-  `<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0" versione="1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><DataOraConsegna>2026-02-01T10:00:05.000+01:00</DataOraConsegna><Destinatario><Codice>ABCDEF</Codice><Descrizione>Dest</Descrizione></Destinatario><MessageId>${msgId}</MessageId>${SIG}</ns3:RicevutaConsegna>`;
-
+// Notifiche conformi allo XSD, firmate a runtime dal generatore unico (ADR 0005).
+const rcXml = (id: string, nome: string, msgId = "M1") =>
+  buildDemoNotificationXml({ tipo: "RC", sdiIdentifier: id, nomeFile: nome, messageId: msgId });
 const nsXml = (id: string, nome: string) =>
-  `<ns3:NotificaScarto xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0" versione="1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><ListaErrori><Errore><Codice>00311</Codice><Descrizione>Codice destinatario non valido</Descrizione></Errore></ListaErrori><MessageId>M2</MessageId>${SIG}</ns3:NotificaScarto>`;
+  buildDemoNotificationXml({ tipo: "NS", sdiIdentifier: id, nomeFile: nome, messageId: "M2" });
 
 describe("parseNotification", () => {
   it("legge una Ricevuta di Consegna", async () => {
@@ -40,6 +39,19 @@ describe("parseNotification", () => {
     const n = await parseNotification(soap("NotificaScarto", nsXml("5", "f.xml"), "5"));
     expect(n.type).toBe("NS");
     expect(n.errori).toEqual([{ codice: "00311", descrizione: "Codice destinatario non valido" }]);
+  });
+
+  it("il generatore produce RC e NS accettate dalla validazione e senza firma sono rifiutate", async () => {
+    const rc = await parseNotification(
+      buildDemoNotificationSoap({ tipo: "RC", sdiIdentifier: "42", nomeFile: "f.xml", destinatarioCodice: "ABC123" }),
+    );
+    expect(rc).toMatchObject({ type: "RC", sdiIdentifier: "42", destinatario: "ABC123" });
+    const ns = await parseNotification(
+      buildDemoNotificationSoap({ tipo: "NS", sdiIdentifier: "43", nomeFile: "f.xml", errori: [{ codice: "00200", descrizione: "File non conforme" }] }),
+    );
+    expect(ns.errori).toEqual([{ codice: "00200", descrizione: "File non conforme" }]);
+    const unsigned = rcXml("1", "f.xml").replace(/<ds:Signature[\s\S]*<\/ds:Signature>/, "");
+    await expect(parseNotification(soap("RicevutaConsegna", unsigned, "1"))).rejects.toThrow(/non valido/);
   });
 
   it("rifiuta una RC senza MessageId (obbligatorio per XSD)", async () => {

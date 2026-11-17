@@ -28,11 +28,15 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 
 ### Ricezione notifiche: provare con curl
 Prerequisiti: migrate + seed, API su localhost:4000 con `SDI_ENV=demo`. Il campo File è l'XML della notifica in base64.
+
+Le notifiche devono essere conformi a `MessaggiTypes_v1.0.xsd` (ADR 0005): attributo `versione="1.0"` sulla radice, `Destinatario` con `Codice` e `Descrizione`, `MessageId` e `ds:Signature` XMLDSig obbligatoria. Non scrivere l'XML a mano: usa il generatore (introdotto per l'issue #16), che firma a runtime con il certificato di test e stampa la busta SOAP completa.
 ```
-INNER='<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0"><IdentificativoSdI>9900000001</IdentificativoSdI><NomeFile>IT01234567890_00001.xml.p7m</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><DataOraConsegna>2026-02-01T10:00:05.000+01:00</DataOraConsegna><Destinatario><Codice>ABCDEFG</Codice></Destinatario><MessageId>M1</MessageId></ns3:RicevutaConsegna>'
-curl -i -X POST http://localhost:4000/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><RicevutaConsegna><IdentificativoSdI>9900000001</IdentificativoSdI><NomeFile>IT01234567890_00001_RC_001.xml</NomeFile><File>$(printf %s "$INNER" | base64)</File></RicevutaConsegna></soapenv:Body></soapenv:Envelope>"
+npm run --silent sdi:notifica-demo -- --tipo RC --id 9900000001 --nome-file IT01234567890_00001.xml.p7m --message-id M1 > /tmp/rc.xml
+curl -i -X POST http://localhost:4000/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data-binary @/tmp/rc.xml
+npm run --silent sdi:notifica-demo -- --tipo NS --id <sdi_identifier> --nome-file <nome_file> --message-id M2 --errore 00200:"File non conforme al formato" > /tmp/ns.xml
 ```
-Atteso: 200 con body SOAP vuoto; DEMO-0001 passa a `delivered`. Ripetendo la chiamata: ancora 200, nessun nuovo storico. Per lo scarto usare l'operazione `NotificaScarto` con `ListaErrori/Errore` (Codice, Descrizione). XML del File malformato o non valido contro lo XSD dei messaggi SdI (es. RC senza DataOraConsegna): atteso 500 SOAP Fault e stato invariato.
+Atteso: RC → 200 con body SOAP vuoto e fattura `delivered`; ripetendo: ancora 200, nessun nuovo storico. NS → 200 e fattura `rejected` con errori in `sdi_notifications`. XML malformato o non valido contro lo XSD (es. RC senza DataOraConsegna o senza ds:Signature): 500 SOAP Fault e stato invariato.
+Nota: oggi si controlla solo la struttura della firma via XSD, non la sua validità crittografica (rinviata, ADR 0005). Rimuovi i file in /tmp a fine prova.
 
 ### Caso SDI_ENV=production
 Non si verifica sulla preview condivisa (gira in demo e non va riconfigurata) e il QA non avvia istanze temporanee dell'API. La copertura è un test Vitest che istanzia il server Fastify reale con `sdiEnv: 'production'` e usa `app.inject` con un pool che registra le query: atteso Fault 500 e zero query. Il QA verifica questo test, non il server dal vivo.

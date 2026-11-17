@@ -8,6 +8,7 @@
     "dev:api": "node --env-file-if-exists=.env --watch server/index.ts",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
+    "sdi:notifica-demo": "node scripts/notifica-demo.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
