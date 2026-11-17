@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "slug": "ricezione-notifiche-sdi",
+  "title": "Ricevere gli esiti SdI su una fattura inviata",
+  "summary": "SdI chiama l'endpoint con RC o NS; il sistema registra la notifica e aggiorna lo stato della fattura una sola volta.",
+  "actors": [
+    "SdI demo",
+    "sistema di ricezione"
+  ],
+  "acceptance": [
+    "RC sulla fattura demo porta a delivered con data consegna",
+    "NS porta a rejected con i codici errore salvati",
+    "Una notifica ripetuta non duplica né lo storico né la riga di notifica",
+    "Operazioni non supportate ricevono un SOAP Fault e un audit",
+    "UPDATE e DELETE sulle tabelle append-only sono bloccati"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "SdI invia una notifica",
+      "detail": "POST SOAP con fileSdI.",
+      "actor": "SdI demo",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "sistema",
+      "title": "Verifica busta SOAP e Content-Type",
+      "detail": "Controllo della struttura e del text/xml.",
+      "actor": "sistema",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "decisione",
+      "title": "Operazione supportata?",
+      "detail": "Sono supportate RicevutaConsegna e NotificaScarto.",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 160
+    },
+    {
+      "id": "n4",
+      "kind": "uscita",
+      "title": "SOAP Fault: operazione non ancora supportata",
+      "detail": "Audit dell'operazione ricevuta.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 524
+    },
+    {
+      "id": "n5",
+      "kind": "sistema",
+      "title": "Decodifica il file e lo valida contro XSD",
+      "detail": "Il file notifica viene decodificato dal base64.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 197
+    },
+    {
+      "id": "n6",
+      "kind": "decisione",
+      "title": "XML e XSD sono validi?",
+      "detail": "Controllo della notifica.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 160
+    },
+    {
+      "id": "n7",
+      "kind": "uscita",
+      "title": "SOAP Fault: XML non valido",
+      "detail": "Nessuna transizione di stato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 524
+    },
+    {
+      "id": "n8",
+      "kind": "decisione",
+      "title": "La fattura è conosciuta?",
+      "detail": "Ricerca per IdentificativoSdI.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 160
+    },
+    {
+      "id": "n9",
+      "kind": "uscita",
+      "title": "Notifica registrata senza fattura",
+      "detail": "invoice_id nullo, audit, risposta OK.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 524
+    },
+    {
+      "id": "n10",
+      "kind": "decisione",
+      "title": "La notifica è già registrata?",
+      "detail": "Chiave unica su IdentificativoSdI, tipo e MessageId.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 160
+    },
+    {
+      "id": "n11",
+      "kind": "uscita",
+      "title": "Duplicato: risposta OK, nessuna modifica",
+      "detail": "Nessuna riga nuova e nessun cambio di stato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2530,
+      "y": 524
+    },
+    {
+      "id": "n12",
+      "kind": "decisione",
+      "title": "Che tipo di notifica è?",
+      "detail": "RC o NS.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2530,
+      "y": 160
+    },
+    {
+      "id": "n13",
+      "kind": "sistema",
+      "title": "RC: la fattura passa a delivered",
+      "detail": "Salvataggio di DataOraConsegna e Destinatario.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2880,
+      "y": 197
+    },
+    {
+      "id": "n14",
+      "kind": "sistema",
+      "title": "NS: la fattura passa a rejected",
+      "detail": "Salvataggio dei codici errore in ListaErrori.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2880,
+      "y": 505
+    },
+    {
+      "id": "n15",
+      "kind": "sistema",
+      "title": "Transazione: notifica, storico e audit",
+      "detail": "Scrittura atomica in tabelle append-only.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3230,
+      "y": 776
+    },
+    {
+      "id": "n16",
+      "kind": "fine",
+      "title": "Risposta SOAP vuota conforme al WSDL",
+      "detail": "HTTP 200.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3580,
+      "y": 1047
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "ricevuta",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "busta valida",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "altra operazione",
+      "kind": "errore"
+    },
+    {
+      "id": "e4",
+      "from": "n3",
+      "to": "n5",
+      "label": "RC o NS",
+      "kind": "ok"
+    },
+    {
+      "id": "e5",
+      "from": "n5",
+      "to": "n6",
+      "label": "decodifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n6",
+      "to": "n7",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n8",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e8",
+      "from": "n8",
+      "to": "n9",
+      "label": "no",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e9",
+      "from": "n8",
+      "to": "n10",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e10",
+      "from": "n10",
+      "to": "n11",
+      "label": "sì",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e11",
+      "from": "n10",
+      "to": "n12",
+      "label": "no",
+      "kind": "ok"
+    },
+    {
+      "id": "e12",
+      "from": "n12",
+      "to": "n13",
+      "label": "RC",
+      "kind": "ok"
+    },
+    {
+      "id": "e13",
+      "from": "n12",
+      "to": "n14",
+      "label": "NS",
+      "kind": "ok"
+    },
+    {
+      "id": "e14",
+      "from": "n13",
+      "to": "n15",
+      "label": "scrive",
+      "kind": "ok"
+    },
+    {
+      "id": "e15",
+      "from": "n14",
+      "to": "n15",
+      "label": "scrive",
+      "kind": "ok"
+    },
+    {
+      "id": "e16",
+      "from": "n9",
+      "to": "n15",
+      "label": "solo notifica e audit",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e17",
+      "from": "n11",
+      "to": "n16",
+      "label": "risposta OK",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e18",
+      "from": "n15",
+      "to": "n16",
+      "label": "completato",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-17T20:23:30.682Z",
+  "updated_at": "2026-11-17T20:23:30.682Z",
+  "updated_by": "run #405 · spec",
+  "layout_version": 4
+}
