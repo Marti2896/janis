@@ -70,3 +70,45 @@ describe("CAdES-BES", () => {
     expect(p7mName("IT01234567890_00001.xml")).toBe("IT01234567890_00001.xml.p7m");
   });
 });
+
+describe("verifyP7m e struttura signing-certificate-v2", () => {
+  it("accetta DER e base64 e restituisce l'xml identico", async () => {
+    const { verifyP7m } = await import("./cades");
+    const p7m = await signCadesBes(XML, tc);
+    expect(verifyP7m(p7m).xml.equals(Buffer.from(XML, "utf8"))).toBe(true);
+    expect(verifyP7m(p7m.toString("base64")).xml.equals(Buffer.from(XML, "utf8"))).toBe(true);
+    const wrapped = p7m.toString("base64").replace(/(.{64})/g, "$1\n");
+    expect(verifyP7m(wrapped).xml.equals(Buffer.from(XML, "utf8"))).toBe(true);
+  });
+
+  it("verifyP7m lancia su firma manomessa o input non valido", async () => {
+    const { verifyP7m } = await import("./cades");
+    const p7m = Buffer.from(await signCadesBes(XML, tc));
+    p7m[p7m.length - 1] ^= 0xff;
+    expect(() => verifyP7m(p7m)).toThrow();
+    expect(() => verifyP7m("non-un-p7m")).toThrow();
+  });
+
+  it("IssuerSerial = SEQUENCE { GeneralNames (SEQUENCE OF), serialNumber } (RFC 5035)", async () => {
+    const p7m = await signCadesBes(XML, tc);
+    const root = forge.asn1.fromDer(p7m.toString("binary"));
+    const kids = (n: forge.asn1.Asn1) => n.value as forge.asn1.Asn1[];
+    const sd = kids(kids(root)[1])[0];
+    const signerInfos = kids(sd)[kids(sd).length - 1];
+    const signedAttrs = kids(kids(signerInfos)[0]).find((n) => n.tagClass === 128 && n.type === 0)!;
+    const attr = kids(signedAttrs).find(
+      (a) => forge.asn1.derToOid(kids(a)[0].value as string) === "1.2.840.113549.1.9.16.2.47",
+    )!;
+    const scv2 = kids(kids(attr)[1])[0];
+    const essCertIdV2 = kids(kids(scv2)[0])[0];
+    const [certHash, issuerSerial] = kids(essCertIdV2);
+    expect(certHash.type).toBe(forge.asn1.Type.OCTETSTRING);
+    const [generalNames, serial] = kids(issuerSerial);
+    expect(generalNames.tagClass).toBe(forge.asn1.Class.UNIVERSAL);
+    expect(generalNames.type).toBe(forge.asn1.Type.SEQUENCE);
+    const directoryName = kids(generalNames)[0];
+    expect(directoryName.tagClass).toBe(forge.asn1.Class.CONTEXT_SPECIFIC);
+    expect(directoryName.type).toBe(4);
+    expect(serial.type).toBe(forge.asn1.Type.INTEGER);
+  });
+});

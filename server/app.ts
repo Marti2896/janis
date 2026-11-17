@@ -1,8 +1,12 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import type pg from "pg";
+import { registerSdiReceiver } from "../src/server/notifications.ts";
 
 export interface AppDeps {
   sdiEnv: string;
   checks: Record<string, () => Promise<void>>;
+  /** Pool Postgres per la ricezione notifiche; se assente la rotta non viene registrata. */
+  pool?: pg.Pool;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -24,6 +28,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       .code(healthy ? 200 : 503)
       .send({ status: healthy ? "ok" : "degraded", sdiEnv: deps.sdiEnv, checks: results });
   });
+
+  if (deps.pool) registerSdiReceiver(app, { pool: deps.pool, sdiEnv: deps.sdiEnv });
 
   return app;
 }

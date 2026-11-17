@@ -111,8 +111,10 @@ export async function signCadesBes(
   const { serial, issuer } = certParts(certAsn1);
 
   // signing-certificate-v2: ESSCertIDv2 con SHA-256 (default, omesso) + IssuerSerial.
+  // RFC 5035: IssuerSerial = SEQUENCE { issuer GeneralNames, serialNumber }
+  // con GeneralNames = SEQUENCE OF GeneralName e directoryName = [4] EXPLICIT Name.
   const issuerSerial = seq([
-    ctx(4, [issuer]), // GeneralNames: directoryName
+    seq([ctx(4, [issuer])]),
     serial,
   ]);
   const essCertIdV2 = seq([octets(sha256(certDer)), issuerSerial]);
@@ -251,4 +253,20 @@ export function verifyCadesBes(p7m: Buffer): VerifyResult {
   } catch {
     return invalid();
   }
+}
+
+/**
+ * Verifica un p7m CAdES-BES (DER oppure base64, anche con a capo) e ne restituisce l'XML firmato.
+ * Lancia un errore se la firma o il contenuto non sono validi.
+ */
+export function verifyP7m(input: Buffer | string): { xml: Buffer } {
+  const bytes = Buffer.isBuffer(input) ? input : Buffer.from(input, "binary");
+  // Un DER CMS inizia sempre con SEQUENCE (0x30); altrimenti si prova come testo base64.
+  const der =
+    bytes[0] === 0x30
+      ? bytes
+      : Buffer.from(bytes.toString("utf8").replace(/\s+/g, ""), "base64");
+  const r = verifyCadesBes(der);
+  if (!r.valid) throw new Error("Firma CAdES-BES non valida");
+  return { xml: r.signedContent };
 }

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
+import { buildApp } from "../../server/app.ts";
 import { createInvoiceRepo } from "./invoice-repo.ts";
 import { RICEZIONE_PATH, parseNotification, registerSdiReceiver, soapOperation } from "./notifications.ts";
 
@@ -11,46 +12,59 @@ function soap(op: string, inner: string, id = "123"): string {
   return `<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><types:${op} xmlns:types="http://www.fatturapa.it/TrasmissioneFatture"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>IT01234567890_00001_RC_001.xml</NomeFile><File>${b64(inner)}</File></types:${op}></soapenv:Body></soapenv:Envelope>`;
 }
 
-const rcXml = (id: string, nome: string, msgId = "M1") =>
-  `<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><DataOraConsegna>2026-02-01T10:00:05.000+01:00</DataOraConsegna><Destinatario><Codice>ABCDEFG</Codice><Descrizione>Dest</Descrizione></Destinatario><MessageId>${msgId}</MessageId></ns3:RicevutaConsegna>`;
+// Firma xmldsig minimale ma valida per lo schema: la verifica crittografica non e in perimetro.
+const SIG = `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI=""><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>AAAA</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>AAAA</ds:SignatureValue></ds:Signature>`;
+
+const rcXml =(id: string, nome: string, msgId = "M1") =>
+  `<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0" versione="1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><DataOraConsegna>2026-02-01T10:00:05.000+01:00</DataOraConsegna><Destinatario><Codice>ABCDEF</Codice><Descrizione>Dest</Descrizione></Destinatario><MessageId>${msgId}</MessageId>${SIG}</ns3:RicevutaConsegna>`;
 
 const nsXml = (id: string, nome: string) =>
-  `<ns3:NotificaScarto xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><ListaErrori><Errore><Codice>00311</Codice><Descrizione>Codice destinatario non valido</Descrizione><Suggerimento>Controllare</Suggerimento></Errore></ListaErrori><MessageId>M2</MessageId></ns3:NotificaScarto>`;
+  `<ns3:NotificaScarto xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0" versione="1.0"><IdentificativoSdI>${id}</IdentificativoSdI><NomeFile>${nome}</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><ListaErrori><Errore><Codice>00311</Codice><Descrizione>Codice destinatario non valido</Descrizione></Errore></ListaErrori><MessageId>M2</MessageId>${SIG}</ns3:NotificaScarto>`;
 
 describe("parseNotification", () => {
-  it("legge una Ricevuta di Consegna", () => {
-    const n = parseNotification(soap("RicevutaConsegna", rcXml("9900000001", "IT01234567890_00001.xml.p7m"), "9900000001"));
+  it("legge una Ricevuta di Consegna", async () => {
+    const n = await parseNotification(soap("RicevutaConsegna", rcXml("9900000001", "IT01234567890_00001.xml.p7m"), "9900000001"));
     expect(n).toMatchObject({
       type: "RC",
       sdiIdentifier: "9900000001",
       nomeFile: "IT01234567890_00001.xml.p7m",
       messageId: "M1",
-      destinatario: "ABCDEFG",
+      destinatario: "ABCDEF",
       dataConsegna: "2026-02-01T10:00:05.000+01:00",
       errori: null,
     });
     expect(n.fileSha256).toHaveLength(64);
   });
 
-  it("legge una Notifica di Scarto con i codici errore", () => {
-    const n = parseNotification(soap("NotificaScarto", nsXml("5", "f.xml"), "5"));
+  it("legge una Notifica di Scarto con i codici errore", async () => {
+    const n = await parseNotification(soap("NotificaScarto", nsXml("5", "f.xml"), "5"));
     expect(n.type).toBe("NS");
-    expect(n.errori).toEqual([{ codice: "00311", descrizione: "Codice destinatario non valido", suggerimento: "Controllare" }]);
+    expect(n.errori).toEqual([{ codice: "00311", descrizione: "Codice destinatario non valido" }]);
   });
 
-  it("MessageId assente diventa stringa vuota", () => {
+  it("rifiuta una RC senza MessageId (obbligatorio per XSD)", async () => {
     const xml = rcXml("1", "f.xml").replace(/<MessageId>.*<\/MessageId>/, "");
-    expect(parseNotification(soap("RicevutaConsegna", xml, "1")).messageId).toBe("");
+    await expect(parseNotification(soap("RicevutaConsegna", xml, "1"))).rejects.toThrow(/non valido/);
   });
 
-  it("rifiuta operazioni non supportate", () => {
-    expect(() => parseNotification(soap("MancataConsegna", "<x/>"))).toThrow(/non ancora supportata: MancataConsegna/);
+  it("rifiuta una RC senza DataOraConsegna", async () => {
+    const xml = rcXml("1", "f.xml").replace(/<DataOraConsegna>.*<\/DataOraConsegna>/, "");
+    await expect(parseNotification(soap("RicevutaConsegna", xml, "1"))).rejects.toThrow(/Messaggio SdI non valido/);
+  });
+
+  it("rifiuta un messaggio interno troncato", async () => {
+    const xml = `<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0"><IdentificativoSdI>1</IdentificativoSdI><NomeFile>`;
+    await expect(parseNotification(soap("RicevutaConsegna", xml, "1"))).rejects.toThrow();
+  });
+
+  it("rifiuta operazioni non supportate", async () => {
+    await expect(parseNotification(soap("MancataConsegna", "<x/>"))).rejects.toThrow(/non ancora supportata: MancataConsegna/);
     expect(soapOperation(soap("NotificaEsito", "<x/>"))).toBe("NotificaEsito");
   });
 
-  it("rifiuta XML malformato o senza Body", () => {
-    expect(() => parseNotification("<a><b></a>")).toThrow();
-    expect(() => parseNotification("<a/>")).toThrow();
+  it("rifiuta XML malformato o senza Body", async () => {
+    await expect(parseNotification("<a><b></a>")).rejects.toThrow();
+    await expect(parseNotification("<a/>")).rejects.toThrow();
   });
 });
 
@@ -62,6 +76,27 @@ describe("rotta di ricezione in production", () => {
     const res = await app.inject({ method: "POST", url: RICEZIONE_PATH, headers: { "content-type": "text/xml" }, payload: soap("RicevutaConsegna", rcXml("1", "f")) });
     expect(res.statusCode).toBe(500);
     expect(res.body).toContain("Fault");
+  });
+
+  it("server reale (buildApp) con sdiEnv production: Fault per RC e NS e zero query", async () => {
+    const queries: string[] = [];
+    const spy = (name: string) => (...args: unknown[]) => {
+      queries.push(`${name}:${String(args[0])}`);
+      throw new Error("DB toccato");
+    };
+    const pool = { query: spy("query"), connect: spy("connect") } as unknown as pg.Pool;
+    const app = buildApp({ sdiEnv: "production", checks: {}, pool });
+    const send = (payload: string) =>
+      app.inject({ method: "POST", url: RICEZIONE_PATH, headers: { "content-type": "text/xml" }, payload });
+
+    const rc = await send(soap("RicevutaConsegna", rcXml("9900000001", "IT01234567890_00001.xml.p7m"), "9900000001"));
+    const ns = await send(soap("NotificaScarto", nsXml("9900000001", "IT01234567890_00001.xml.p7m"), "9900000001"));
+    for (const res of [rc, ns]) {
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toContain("Fault");
+    }
+    expect(queries).toEqual([]);
+    await app.close();
   });
 });
 

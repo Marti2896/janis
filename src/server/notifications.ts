@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
 import type { FastifyInstance } from "fastify";
 import type pg from "pg";
+import { validateMessaggioXml } from "../sdi/messaggi/validate.ts";
 
 export type NotificationType = "RC" | "NS";
 
@@ -67,7 +68,7 @@ export function soapOperation(xml: string): string {
   return op;
 }
 
-export function parseNotification(soapXml: string): ParsedNotification {
+export async function parseNotification(soapXml: string): Promise<ParsedNotification> {
   const operation = soapOperation(soapXml);
   const type = OPERATIONS[operation];
   if (!type) throw new SoapFaultError(`Operazione SdI non ancora supportata: ${operation}`, operation);
@@ -78,7 +79,12 @@ export function parseNotification(soapXml: string): ParsedNotification {
   if (!sdiIdentifier || !fileB64) throw new SoapFaultError("fileSdI incompleto", operation);
 
   const bytes = Buffer.from(fileB64, "base64");
-  const root = parseXml(bytes.toString("utf8"));
+  const innerXml = bytes.toString("utf8");
+  const root = parseXml(innerXml);
+  const valid = await validateMessaggioXml(innerXml);
+  if (!valid.ok) {
+    throw new SoapFaultError(`Messaggio SdI non valido: ${valid.errors[0] ?? "errore XSD"}`, operation);
+  }
   const msg = root.RicevutaConsegna ?? root.NotificaScarto;
   if (!msg || typeof msg !== "object") throw new SoapFaultError("Notifica interna non valida", operation);
   if (Boolean(root.RicevutaConsegna) !== (type === "RC")) {
@@ -220,7 +226,7 @@ export function registerSdiReceiver(app: FastifyInstance, deps: { pool: pg.Pool;
       return fault(reply, "Ricezione notifiche non abilitata in production");
     }
     try {
-      const n = parseNotification(typeof req.body === "string" ? req.body : "");
+      const n = await parseNotification(typeof req.body === "string" ? req.body : "");
       const result = await processNotification(deps.pool, n);
       req.log.info({ result, type: n.type, sdiIdentifier: n.sdiIdentifier }, "notifica SdI elaborata");
       return reply.code(200).type("text/xml; charset=utf-8").send(soapOk);

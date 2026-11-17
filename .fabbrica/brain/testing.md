@@ -1,50 +1,49 @@
 # Accesso e test
 
 Mantenuto dall'orchestratore. Tutto ciò che serve a un agente (o a un umano) per avviare, autenticarsi e testare l'app.
-Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `access` degli agenti.
+Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `access` degli agenti: l'orchestratore le consolida qui sopra.
 
 ## Avvio
 - Prerequisiti: Node >= 24, Docker (per Postgres e Redis).
 - Servizi: `docker compose up -d` avvia Postgres 17 (localhost:54320, db `sdi_channel`, utente `sdi` / `sdi_dev_only`, solo sviluppo) e Redis 7 (localhost:63790).
 - `.env`: copia di `.env.example` (lo fa `npm run dev` se manca). `SDI_ENV=demo` sempre: la produzione SdI non si tocca.
-- Migrazioni: `npm run db:migrate` (applica `db/migrations/*.sql` in ordine, tracciate in `schema_migrations`).
-- Dev server: `npm run dev` avvia web (Next, porta 3000) e API (Fastify, porta 4000). Gli agenti NON lo avviano a mano: la preview è dell'infrastruttura.
-- URL: dashboard http://localhost:3000 (oggi solo scheletro), API http://localhost:4000.
+- Migrazioni: `npm run db:migrate` (applica `db/migrations/*.sql` in ordine, tracciate in `schema_migrations`). La 0002 crea lo schema SDICoop (ADR 0004).
+- Dev server: `npm run dev` avvia web (Next, porta 3000) e API (Fastify, porta 4000). Gli agenti NON lo avviano a mano: la preview (http://127.0.0.1:4000, cioè l'API) è dell'infrastruttura e gira con `SDI_ENV=demo`. Non riconfigurarla.
+- URL: dashboard http://localhost:3000 (solo scheletro), API http://localhost:4000.
 
 ## Autenticazione
-- Oggi NON esiste autenticazione: nessun utente, nessuna API key, nessun login. La dashboard e l'API sono aperte in locale.
-- Le API key per tenant e il login operatore arriveranno con la roadmap (feature 6 e 7), non in questa run.
-- L'endpoint di ricezione notifiche SdI (run #405) in produzione sarà protetto da mutua autenticazione TLS; in locale/test si chiama senza TLS.
+- Non esiste autenticazione: nessun utente, nessuna API key, nessun login. Dashboard e API sono aperte in locale.
+- API key per tenant e login operatore arriveranno con la roadmap, non nella run #405.
+- L'endpoint di ricezione notifiche SdI in produzione sarà protetto da mutua TLS; in locale si chiama senza TLS.
 
 ## Dati di seed
-- Oggi: nessuno (la migrazione 0001 è vuota).
-- Con la run #405: migrazione con tabelle `tenants`, `invoices`, `invoice_status_history`, `sdi_notifications`, `audit_log` e uno script di seed idempotente con un tenant demo e una fattura demo in stato `sent`. Il builder documenterà comando e dati esatti in una sezione "Run #405".
+- Comando: `npm run db:seed` (equivale a `node --env-file-if-exists=.env scripts/seed.mjs`), idempotente: rieseguirlo non duplica.
+- Tenant demo: partita IVA IT01234567890.
+- Fattura demo: numero DEMO-0001, nome_file `IT01234567890_00001.xml.p7m`, stato `sent`, sdi_identifier `9900000001`.
+- Il seed NON riporta la fattura demo a `sent` se è già stata consumata da una RC/NS (le tabelle sono append-only). Per ripetere i test di ricezione: crea fatture di prova con prefisso `qa-` e sdi_identifier dedicati, oppure ricrea il DB (`docker compose down -v && docker compose up -d`, poi migrate e seed).
 
 ## Endpoint utili
 - `GET /health` (porta 4000): stato di database e Redis, `sdiEnv` attivo. 200 se tutto ok, 503 se degradato.
-- In arrivo con la run #405: endpoint SOAP di ricezione notifiche SdI (RicevutaConsegna, NotificaScarto), percorso definito in ADR 0004.
+- `POST /sdi/ricezione/trasmissione-fatture` (porta 4000, Content-Type `text/xml`): ricezione notifiche SdI, operazioni `RicevutaConsegna` e `NotificaScarto` (ADR 0004). Attiva solo con `SDI_ENV` diverso da `production`; in production risponde sempre SOAP Fault senza toccare il DB.
 
-## Test automatici
-- `npm run test` (Vitest, file `*.test.ts` accanto al codice). Devono passare anche `npm run typecheck`, `npm run lint`, `npm run build`.
-- I test unitari non richiedono rete né Docker. I test che toccano Postgres usano `DATABASE_URL` e vanno saltati in modo esplicito (non falliti in silenzio) se il DB non è raggiungibile.
-- Nessun test chiama SdI reale: l'endpoint demo è simulato con un server HTTP locale su porta effimera avviato e chiuso dal test.
-- Certificati di firma per i test: generati a runtime dal test (self-signed), mai salvati nel repo.
-
-
-## Run #405 · builder · Seed demo e curl ricezione notifiche
-
-Migrazioni: `npm run db:migrate`. Seed: `node --env-file-if-exists=.env scripts/seed.mjs` (idempotente). Tenant IT01234567890; fattura DEMO-0001, nome_file IT01234567890_00001.xml.p7m, stato sent, sdi_identifier 9900000001. Endpoint: POST http://localhost:4000/sdi/ricezione/trasmissione-fatture (text/xml, solo SDI_ENV=demo, nessuna autenticazione). Esempio curl completo in .fabbrica/brain/testing.md, sezione Run #405. Atteso: 200 con body SOAP vuoto e fattura delivered.
-
-### Ricezione notifiche: provare con curl (run #405)
-Prerequisiti: `npm run db:migrate && npm run db:seed`, API su localhost:4000 con `SDI_ENV=demo`. Il campo File è l'XML della notifica in base64.
+### Ricezione notifiche: provare con curl
+Prerequisiti: migrate + seed, API su localhost:4000 con `SDI_ENV=demo`. Il campo File è l'XML della notifica in base64.
 ```
 INNER='<ns3:RicevutaConsegna xmlns:ns3="http://www.fatturapa.gov.it/sdi/messaggi/v1.0"><IdentificativoSdI>9900000001</IdentificativoSdI><NomeFile>IT01234567890_00001.xml.p7m</NomeFile><DataOraRicezione>2026-02-01T10:00:00.000+01:00</DataOraRicezione><DataOraConsegna>2026-02-01T10:00:05.000+01:00</DataOraConsegna><Destinatario><Codice>ABCDEFG</Codice></Destinatario><MessageId>M1</MessageId></ns3:RicevutaConsegna>'
 curl -i -X POST http://localhost:4000/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><RicevutaConsegna><IdentificativoSdI>9900000001</IdentificativoSdI><NomeFile>IT01234567890_00001_RC_001.xml</NomeFile><File>$(printf %s "$INNER" | base64)</File></RicevutaConsegna></soapenv:Body></soapenv:Envelope>"
 ```
-Atteso: 200 con body SOAP vuoto; DEMO-0001 passa a `delivered` (ripetendo la chiamata: ancora 200, nessun nuovo storico). Per lo scarto usare l'operazione `NotificaScarto` con `ListaErrori/Errore`. Il seed si ripristina solo su DB nuovo (la fattura demo non si riporta a `sent`).
-Test Vitest con DB: `DATABASE_URL=... npx vitest run src/server`; senza Postgres i 9 test DB sono saltati con un avviso.
+Atteso: 200 con body SOAP vuoto; DEMO-0001 passa a `delivered`. Ripetendo la chiamata: ancora 200, nessun nuovo storico. Per lo scarto usare l'operazione `NotificaScarto` con `ListaErrori/Errore` (Codice, Descrizione). XML del File malformato o non valido contro lo XSD dei messaggi SdI (es. RC senza DataOraConsegna): atteso 500 SOAP Fault e stato invariato.
 
+### Caso SDI_ENV=production
+Non si verifica sulla preview condivisa (gira in demo e non va riconfigurata) e il QA non avvia istanze temporanee dell'API. La copertura è un test Vitest che istanzia il server Fastify reale con `sdiEnv: 'production'` e usa `app.inject` con un pool che registra le query: atteso Fault 500 e zero query. Il QA verifica questo test, non il server dal vivo.
 
-## Run #405 · builder · Seed demo e curl ricezione notifiche (copia 4)
+## Test automatici
+- `npm run test` (Vitest, file `*.test.ts` accanto al codice). Devono passare anche `npm run typecheck`, `npm run lint`, `npm run build`.
+- Moduli: `src/sdi/fatturapa` (generazione e validazione XSD), `src/sdi/sign` (firma CAdES-BES), `src/sdi/client` (client SOAP SdIRiceviFile), `src/server` (repo fatture, ricezione notifiche).
+- Test con DB: `DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel npx vitest run src/server`. Senza Postgres i test DB sono saltati con un avviso esplicito.
+- Nessun test chiama SdI reale: l'endpoint demo è simulato con un server HTTP locale su porta effimera, avviato e chiuso dal test.
+- Certificati di firma per i test: generati a runtime (`src/sdi/sign/test-cert.ts`), mai salvati nel repo.
+- Firma da riga di comando (verifica indipendente): `openssl cms -verify -inform DER -in file.p7m -noverify -out out.xml` e `openssl asn1parse -inform DER -in file.p7m -i` per ispezionare signing-certificate-v2.
 
-Migrazioni: `npm run db:migrate`. Seed idempotente: `npm run db:seed`. Tenant IT01234567890; fattura DEMO-0001, nome_file IT01234567890_00001.xml.p7m, stato sent, sdi_identifier 9900000001. Endpoint: POST http://localhost:4000/sdi/ricezione/trasmissione-fatture (Content-Type text/xml, attivo solo con SDI_ENV=demo, nessuna autenticazione). Esempio curl completo in .fabbrica/brain/testing.md, sezione Ricezione notifiche. Atteso: 200 con body SOAP vuoto e fattura delivered. Test con DB: DATABASE_URL=... npx vitest run src/server.
+## QA della run #405
+- Nessuna UI: niente browser né screenshot. Il QA usa Vitest, curl sull'API della preview e query sul DB.
