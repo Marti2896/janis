@@ -8,6 +8,7 @@ const pool = createPool(config.databaseUrl);
 
 const app = buildApp({
   sdiEnv: config.sdiEnv,
+  pool,
   checks: {
     database: () => checkDatabase(pool),
     redis: () => checkRedis(config.redisUrl),

@@ -6,7 +6,20 @@ export interface Config {
   databaseUrl: string;
   redisUrl: string;
   /** Endpoint SdI dell'ambiente attivo (da specifiche tecniche, mai hardcoded). */
-  sdi: { trasmissioneUrl: string; ricezioneBaseUrl: string };
+  sdi: {
+    trasmissioneUrl: string;
+    ricezioneBaseUrl: string;
+    /** Retry dell'invio: solo errori di rete, timeout e 5xx. */
+    retry: { maxAttempts: number; baseMs: number; capMs: number };
+  };
+}
+
+function positiveInt(env: Record<string, string | undefined>, key: string, fallback: number): number {
+  const raw = env[key];
+  if (raw === undefined || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`${key} deve essere un intero positivo: ${raw}`);
+  return n;
 }
 
 function required(env: Record<string, string | undefined>, key: string): string {
@@ -38,6 +51,11 @@ export function loadConfig(
     sdi: {
       trasmissioneUrl: optional(`${prefix}_TRASMISSIONE_URL`),
       ricezioneBaseUrl: optional(`${prefix}_RICEZIONE_BASE_URL`),
+      retry: {
+        maxAttempts: positiveInt(env, "SDI_RETRY_MAX_ATTEMPTS", 3),
+        baseMs: positiveInt(env, "SDI_RETRY_BASE_MS", 1000),
+        capMs: positiveInt(env, "SDI_RETRY_CAP_MS", 8000),
+      },
     },
   };
 }

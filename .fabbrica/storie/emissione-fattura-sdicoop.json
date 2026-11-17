@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "slug": "emissione-fattura-sdicoop",
+  "title": "Emettere e inviare una fattura al Sistema di Interscambio",
+  "summary": "Dal modello della fattura al file FatturaPA validato, firmato in CAdES-BES e inviato al demo SdI senza duplicati.",
+  "actors": [
+    "chiamante interno",
+    "SdI demo"
+  ],
+  "acceptance": [
+    "Il modello valido produce un XML che passa la validazione XSD",
+    "Il file firmato viene verificato e restituisce il contenuto identico",
+    "L'invio riuscito porta la fattura a sent con IdentificativoSdI",
+    "Un errore di rete esaurito porta a send_unknown senza retry automatico",
+    "Un secondo invio con lo stesso NomeFile non chiama l'endpoint"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "Il chiamante richiede l'emissione",
+      "detail": "Passa il modello della fattura al modulo di generazione.",
+      "actor": "chiamante interno",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "azione",
+      "title": "Compila cedente, cessionario, righe e pagamento",
+      "detail": "Il modello contiene i dati obbligatori del tracciato FPR12.",
+      "actor": "chiamante interno",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "decisione",
+      "title": "Il modello è completo?",
+      "detail": "Controllo delle righe, dei campi obbligatori e dei codici.",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 160
+    },
+    {
+      "id": "n4",
+      "kind": "uscita",
+      "title": "Errore di validazione",
+      "detail": "Lista dei campi mancanti o non validi.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 505
+    },
+    {
+      "id": "n5",
+      "kind": "sistema",
+      "title": "Genera l'XML FPR12 e lo valida contro gli XSD",
+      "detail": "Calcola il DatiRiepilogo e formatta gli importi in centesimi.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 197
+    },
+    {
+      "id": "n6",
+      "kind": "decisione",
+      "title": "L'XML è valido?",
+      "detail": "Validazione contro lo schema ufficiale versionato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 160
+    },
+    {
+      "id": "n7",
+      "kind": "uscita",
+      "title": "Rifiuto con errore XSD leggibile",
+      "detail": "Messaggio con percorso del campo.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 505
+    },
+    {
+      "id": "n8",
+      "kind": "sistema",
+      "title": "Firma in CAdES-BES e produce il p7m",
+      "detail": "Certificato incluso, signing-certificate-v2, NomeFile con .xml.p7m.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 197
+    },
+    {
+      "id": "n9",
+      "kind": "sistema",
+      "title": "La fattura passa a signed",
+      "detail": "Transizione con storico e audit nella stessa transazione.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 197
+    },
+    {
+      "id": "n10",
+      "kind": "decisione",
+      "title": "Esiste già un invio con questo NomeFile?",
+      "detail": "Controllo di idempotenza prima di qualsiasi chiamata HTTP.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2530,
+      "y": 160
+    },
+    {
+      "id": "n11",
+      "kind": "uscita",
+      "title": "Invio rifiutato come duplicato",
+      "detail": "L'endpoint non viene chiamato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2880,
+      "y": 505
+    },
+    {
+      "id": "n12",
+      "kind": "sistema",
+      "title": "Invia SdIRiceviFile al demo",
+      "detail": "Busta SOAP con NomeFile e File in base64. Retry solo su rete e 5xx.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2880,
+      "y": 197
+    },
+    {
+      "id": "n13",
+      "kind": "decisione",
+      "title": "Qual è l'esito?",
+      "detail": "Risposta con IdentificativoSdI, Errore SdI o nessuna risposta.",
+      "actor": "SdI demo",
+      "media": [],
+      "x": 3230,
+      "y": 160
+    },
+    {
+      "id": "n14",
+      "kind": "sistema",
+      "title": "Fattura in stato sent",
+      "detail": "IdentificativoSdI salvato, storico e audit scritti.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3580,
+      "y": 197
+    },
+    {
+      "id": "n15",
+      "kind": "uscita",
+      "title": "Stato send_error",
+      "detail": "Errore SdI: nessun retry. Richiede una nuova fattura.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3580,
+      "y": 505
+    },
+    {
+      "id": "n16",
+      "kind": "uscita",
+      "title": "Stato send_unknown",
+      "detail": "Rete o 5xx esauriti: nessun retry automatico, si attende una notifica.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3580,
+      "y": 738
+    },
+    {
+      "id": "n17",
+      "kind": "fine",
+      "title": "Fattura inviata, in attesa di notifica",
+      "detail": "Le notifiche RC o NS aggiornano lo stato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 3930,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "avvia",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "invia modello",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e4",
+      "from": "n3",
+      "to": "n5",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e5",
+      "from": "n5",
+      "to": "n6",
+      "label": "genera",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n6",
+      "to": "n7",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n8",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e8",
+      "from": "n8",
+      "to": "n9",
+      "label": "firmato",
+      "kind": "ok"
+    },
+    {
+      "id": "e9",
+      "from": "n9",
+      "to": "n10",
+      "label": "verifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e10",
+      "from": "n10",
+      "to": "n11",
+      "label": "sì",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e11",
+      "from": "n10",
+      "to": "n12",
+      "label": "no",
+      "kind": "ok"
+    },
+    {
+      "id": "e12",
+      "from": "n12",
+      "to": "n13",
+      "label": "risposta",
+      "kind": "ok"
+    },
+    {
+      "id": "e13",
+      "from": "n13",
+      "to": "n14",
+      "label": "IdentificativoSdI",
+      "kind": "ok"
+    },
+    {
+      "id": "e14",
+      "from": "n13",
+      "to": "n15",
+      "label": "Errore SdI",
+      "kind": "errore"
+    },
+    {
+      "id": "e15",
+      "from": "n13",
+      "to": "n16",
+      "label": "rete o 5xx esauriti",
+      "kind": "errore"
+    },
+    {
+      "id": "e16",
+      "from": "n14",
+      "to": "n17",
+      "label": "completato",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-17T20:23:30.679Z",
+  "updated_at": "2026-11-17T20:23:30.679Z",
+  "updated_by": "run #405 · spec",
+  "layout_version": 4
+}
