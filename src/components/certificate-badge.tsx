@@ -25,12 +25,8 @@ export function CertificateBadge({
 }) {
   const level = certificateLevel(notAfter, now);
   if (level === "ok") return null;
-  if (level === "expired") return <Badge variant="destructive">Scaduto</Badge>;
+  if (level === "expired") return <Badge variant="danger">Scaduto</Badge>;
   if (level === "critical")
-    return <Badge variant="destructive">Scade entro 7 giorni</Badge>;
-  return (
-    <Badge className="bg-warning text-warning-foreground">
-      Scade entro 30 giorni
-    </Badge>
-  );
+    return <Badge variant="danger">Scade entro 7 giorni</Badge>;
+  return <Badge variant="warning">Scade entro 30 giorni</Badge>;
 }
