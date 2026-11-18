@@ -83,6 +83,7 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-12">#</TableHead>
           <TableHead>Numero</TableHead>
           <TableHead>Data</TableHead>
           {isAdmin && <TableHead>Account</TableHead>}
@@ -92,8 +93,11 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((r) => (
+        {rows.map((r, i) => (
           <InvoiceRowLink key={r.id} href={`/fatture/${r.id}`}>
+            <TableCell className="w-12 text-muted-foreground tabular-nums">
+              {(page - 1) * PAGE_SIZE + i + 1}
+            </TableCell>
             <TableCell className="font-medium">
               <Link href={`/fatture/${r.id}`} className="underline-offset-4 hover:underline">
                 {r.numero}

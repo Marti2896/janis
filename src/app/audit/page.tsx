@@ -124,6 +124,7 @@ export default async function AuditPage({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Data e ora</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Azione</TableHead>
@@ -132,8 +133,11 @@ export default async function AuditPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {shown.map((r) => (
+                  {shown.map((r, i) => (
                     <TableRow key={r.id}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">
+                        {(page - 1) * PAGE_SIZE + i + 1}
+                      </TableCell>
                       <TableCell>
                         {new Date(r.createdAt).toLocaleString("it-IT")}
                       </TableCell>
