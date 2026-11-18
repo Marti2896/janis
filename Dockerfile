@@ -19,6 +19,7 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/server ./server
 COPY --from=build /app/src ./src
 COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/db ./db
 COPY --from=build /app/next.config.ts ./next.config.ts
 
 COPY docker/start.sh /app/start.sh
