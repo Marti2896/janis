@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NATURE_OPTIONS } from "@/lib/nature-iva";
+import type { InvoicePrefill } from "@/lib/server-api";
 import { createInvoiceAction, validateInvoiceAction, type NewInvoiceState } from "./actions";
 
 function FieldError({ message }: { message?: string }) {
@@ -39,6 +40,8 @@ interface Props {
     comune: string | null;
     provincia: string | null;
   }[];
+  /** Dati della fattura scartata da rifare (stesso numero e stessa data). */
+  prefill?: InvoicePrefill;
 }
 
 function sedeText(t: Props["tenants"][number] | undefined): string {
@@ -51,6 +54,8 @@ interface Row {
   quantita: string;
   prezzo: string;
   aliquota: string;
+  descrizione: string;
+  natura: string;
 }
 
 const eur = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
@@ -75,7 +80,7 @@ function totals(rows: { quantita: string; prezzo: string; aliquota: string }[]) 
 const TIPI: Record<string, string> = { TD01: "Fattura (TD01)", TD04: "Nota di credito (TD04)" };
 const FORMATI: Record<string, string> = { FPR12: "Privati e aziende (FPR12)", FPA12: "Pubblica amministrazione (FPA12)" };
 
-export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
+export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: Props) {
   const [state, action, pending] = useActionState<NewInvoiceState, FormData>(
     async (prev, fd) => {
       try {
@@ -91,13 +96,17 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
     },
     { fieldErrors: {}, error: null },
   );
-  const [rows, setRows] = useState<Row[]>([{ id: 0, quantita: "1", prezzo: "", aliquota: "22" }]);
-  const [nextId, setNextId] = useState(1);
-  const [destTipo, setDestTipo] = useState("codice");
+  const [rows, setRows] = useState<Row[]>(
+    prefill && prefill.righe.length
+      ? prefill.righe.map((r, i) => ({ id: i, quantita: r.quantita, prezzo: r.prezzo, aliquota: r.aliquota, descrizione: r.descrizione, natura: r.natura }))
+      : [{ id: 0, quantita: "1", prezzo: "", aliquota: "22", descrizione: "", natura: "" }],
+  );
+  const [nextId, setNextId] = useState(prefill?.righe.length || 1);
+  const [destTipo, setDestTipo] = useState<string>(prefill?.destTipo ?? "codice");
   const [summary, setSummary] = useState<FormData | null>(null);
   const [pre, setPre] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);
-  const [tenantSel, setTenantSel] = useState("");
+  const [tenantSel, setTenantSel] = useState(prefill?.tenantId ?? "");
   const e = Object.keys(pre).length ? pre : state.fieldErrors;
   const tot = totals(rows);
   const cedente = role === "admin" ? tenants.find((t) => t.id === tenantSel) : tenants[0];
@@ -142,6 +151,24 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+      {prefill && <input type="hidden" name="replacesId" value={prefill.replacesId} />}
+
+      {prefill && (
+        <Alert variant="warning">
+          <AlertCircle />
+          <AlertTitle>Stai rifacendo la fattura {prefill.numero}, scartata dal Sistema di Interscambio</AlertTitle>
+          <AlertDescription>
+            {prefill.motivo.length > 0 && (
+              <ul className="list-disc pl-5">
+                {prefill.motivo.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            )}
+            <p>Correggi i dati: la nuova fattura avrà lo stesso numero e la stessa data della fattura scartata.</p>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {state.error && (
         <Alert variant="destructive">
@@ -207,37 +234,40 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2 sm:col-span-2">
             <Label htmlFor="denominazione">Denominazione</Label>
-            <Input id="denominazione" name="cessionario.denominazione" aria-invalid={e["cessionario.denominazione"] ? true : undefined} />
+            <Input id="denominazione" name="cessionario.denominazione" defaultValue={prefill?.denominazione} aria-invalid={e["cessionario.denominazione"] ? true : undefined} />
             <FieldError message={e["cessionario.denominazione"]} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="piva">Partita IVA</Label>
-            <Input id="piva" name="cessionario.partitaIva" inputMode="numeric" aria-invalid={e["cessionario.partitaIva"] ? true : undefined} />
+            <Input id="piva" name="cessionario.partitaIva" inputMode="numeric" defaultValue={prefill?.partitaIva} aria-invalid={e["cessionario.partitaIva"] ? true : undefined} />
             <FieldError message={e["cessionario.partitaIva"]} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="cf">Codice fiscale (opzionale)</Label>
-            <Input id="cf" name="cessionario.codiceFiscale" aria-invalid={e["cessionario.codiceFiscale"] ? true : undefined} />
+            <Label htmlFor="cf">Codice fiscale</Label>
+            <Input id="cf" name="cessionario.codiceFiscale" defaultValue={prefill?.codiceFiscale} aria-invalid={e["cessionario.codiceFiscale"] ? true : undefined} />
             <FieldError message={e["cessionario.codiceFiscale"]} />
           </div>
+          <p className="text-sm text-muted-foreground sm:col-span-2">
+            Inserisci la Partita IVA oppure, per un privato, solo il codice fiscale. Per un privato usa il codice destinatario 0000000 o la PEC.
+          </p>
           <div className="flex flex-col gap-2 sm:col-span-2">
             <Label htmlFor="indirizzo">Indirizzo</Label>
-            <Input id="indirizzo" name="cessionario.indirizzo" autoComplete="off" aria-invalid={e["cessionario.indirizzo"] ? true : undefined} />
+            <Input id="indirizzo" name="cessionario.indirizzo" autoComplete="off" defaultValue={prefill?.indirizzo} aria-invalid={e["cessionario.indirizzo"] ? true : undefined} />
             <FieldError message={e["cessionario.indirizzo"]} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="cap">CAP</Label>
-            <Input id="cap" name="cessionario.cap" inputMode="numeric" maxLength={5} aria-invalid={e["cessionario.cap"] ? true : undefined} />
+            <Input id="cap" name="cessionario.cap" inputMode="numeric" maxLength={5} defaultValue={prefill?.cap} aria-invalid={e["cessionario.cap"] ? true : undefined} />
             <FieldError message={e["cessionario.cap"]} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="comune">Comune</Label>
-            <Input id="comune" name="cessionario.comune" aria-invalid={e["cessionario.comune"] ? true : undefined} />
+            <Input id="comune" name="cessionario.comune" defaultValue={prefill?.comune} aria-invalid={e["cessionario.comune"] ? true : undefined} />
             <FieldError message={e["cessionario.comune"]} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="provincia">Provincia (sigla, opzionale)</Label>
-            <Input id="provincia" name="cessionario.provincia" maxLength={2} placeholder="MI" aria-invalid={e["cessionario.provincia"] ? true : undefined} />
+            <Input id="provincia" name="cessionario.provincia" maxLength={2} placeholder="MI" defaultValue={prefill?.provincia} aria-invalid={e["cessionario.provincia"] ? true : undefined} />
             <FieldError message={e["cessionario.provincia"]} />
           </div>
           <div className="flex flex-col gap-3 sm:col-span-2">
@@ -254,6 +284,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
             </RadioGroup>
             <Input
               name="destinazione.valore"
+              defaultValue={prefill?.destValore}
               aria-label={destTipo === "pec" ? "Indirizzo PEC" : "Codice destinatario"}
               placeholder={destTipo === "pec" ? "nome@pec.esempio.it" : "7 caratteri"}
               aria-invalid={e["destinazione.valore"] ? true : undefined}
@@ -271,7 +302,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor="tipoDocumento">Tipo documento</Label>
-            <Select name="tipoDocumento" defaultValue="TD01">
+            <Select name="tipoDocumento" defaultValue={prefill?.tipoDocumento ?? "TD01"}>
               <SelectTrigger id="tipoDocumento" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -287,7 +318,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="formato">Formato</Label>
-            <Select name="formato" defaultValue="FPR12">
+            <Select name="formato" defaultValue={prefill?.formato ?? "FPR12"}>
               <SelectTrigger id="formato" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -303,7 +334,14 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="data">Data fattura</Label>
-            <Input id="data" name="data" type="date" defaultValue={today} aria-invalid={e["data"] ? true : undefined} />
+            <Input
+              id="data"
+              name="data"
+              type="date"
+              defaultValue={prefill?.data ?? today}
+              readOnly={Boolean(prefill)}
+              aria-invalid={e["data"] ? true : undefined}
+            />
             <FieldError message={e["data"]} />
           </div>
         </CardContent>
@@ -318,7 +356,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
             <div key={row.id} className="grid gap-4 border-b pb-6 last:border-b-0 last:pb-0 sm:grid-cols-6">
               <div className="flex flex-col gap-2 sm:col-span-6">
                 <Label htmlFor={`desc-${row.id}`}>Descrizione</Label>
-                <Input id={`desc-${row.id}`} name={`righe.${i}.descrizione`} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
+                <Input id={`desc-${row.id}`} name={`righe.${i}.descrizione`} defaultValue={row.descrizione} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
                 <FieldError message={e[`righe.${i}.descrizione`]} />
               </div>
               <div className="flex flex-col gap-2 sm:col-span-2">
@@ -364,7 +402,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
               {row.aliquota === "0" && (
                 <div className="flex flex-col gap-2 sm:col-span-6">
                   <Label htmlFor={`nat-${row.id}`}>Motivo dell&apos;esenzione</Label>
-                  <Select name={`righe.${i}.natura`}>
+                  <Select name={`righe.${i}.natura`} defaultValue={row.natura || undefined}>
                     <SelectTrigger id={`nat-${row.id}`} className="w-full" aria-invalid={e[`righe.${i}.natura`] ? true : undefined}>
                       <SelectValue placeholder="Scegli il motivo" />
                     </SelectTrigger>
@@ -398,7 +436,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
             variant="outline"
             className="w-fit"
             onClick={() => {
-              setRows((rs) => [...rs, { id: nextId, quantita: "1", prezzo: "", aliquota: "22" }]);
+              setRows((rs) => [...rs, { id: nextId, quantita: "1", prezzo: "", aliquota: "22", descrizione: "", natura: "" }]);
               setNextId((n) => n + 1);
             }}
           >

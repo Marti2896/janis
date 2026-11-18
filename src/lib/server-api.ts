@@ -47,8 +47,11 @@ export interface InvoiceEvent {
   at: string;
   kind: "invio" | "notifica" | "stato";
   label: string;
+  /** Tipo di notifica SdI (RC, NS, MC, NE, DT, SE) per le notifiche. */
+  type?: string;
   outcome?: string | null;
   error?: string | null;
+  errors?: { codice: string; descrizione: string }[];
 }
 
 export interface InvoiceDetail extends InvoiceRow {
@@ -56,6 +59,8 @@ export interface InvoiceDetail extends InvoiceRow {
   ambiente: string;
   sdiIdentifier: string | null;
   hasFile: boolean;
+  replacedBy: string | null;
+  replaces: string | null;
   events: InvoiceEvent[];
 }
 
@@ -149,13 +154,88 @@ export async function getInvoiceDetail(scope: Scope, id: string): Promise<Invoic
     ambiente: d.ambiente ?? "",
     sdiIdentifier: d.sdiIdentifier,
     hasFile: d.hasFile,
+    replacedBy: d.replacedBy,
+    replaces: d.replaces,
     events: d.events.map((e) => ({
       at: iso(e.at),
       kind: e.kind === "notification" ? ("notifica" as const) : ("stato" as const),
       label: e.description,
+      type: e.kind === "notification" ? e.type : undefined,
+      errors: e.errori ?? undefined,
       outcome: e.esito,
       error: e.errori?.length ? e.errori.map((x) => `${x.codice}: ${x.descrizione}`).join("; ") : null,
     })),
+  };
+}
+
+export interface InvoicePrefill {
+  replacesId: string;
+  numero: string;
+  data: string;
+  tenantId: string;
+  denominazione: string;
+  partitaIva: string;
+  codiceFiscale: string;
+  indirizzo: string;
+  cap: string;
+  comune: string;
+  provincia: string;
+  destTipo: "codice" | "pec";
+  destValore: string;
+  tipoDocumento: string;
+  formato: string;
+  righe: { descrizione: string; quantita: string; prezzo: string; aliquota: string; natura: string }[];
+  /** Motivo dello scarto, già in frase leggibile. */
+  motivo: string[];
+}
+
+const dec = (n: number) => String(n).replace(".", ",");
+
+/** Dati di una fattura scartata (NS) per ripartire da una nuova fattura già compilata. Altro tenant o stato diverso: null. */
+export async function getInvoicePrefill(scope: Scope, id: string): Promise<InvoicePrefill | null> {
+  const d = await invoiceServiceModule.getInvoice(scope, id);
+  if (!d || d.status !== "rejected") return null;
+  const file = await invoiceServiceModule.getInvoiceFile(scope, id);
+  if (!file) return null;
+  let f;
+  try {
+    const { parseFatturaRicevuta } = await import("@/sdi/fatturapa/parse");
+    f = parseFatturaRicevuta(file.bytes, file.fileName);
+  } catch {
+    return null;
+  }
+  const doc = f.documenti[0];
+  const sede = f.cliente.sede ?? "";
+  const m = /^(.*?),?\s*(\d{5})\s+(.*?)(?:\s+\(([A-Za-z]{2})\))?$/.exec(sede);
+  const dest = d.destinazione ?? "";
+  const isPec = dest.includes("@");
+  const motivo = d.events
+    .filter((e) => e.type === "NS")
+    .flatMap((e) => (e.errori ?? []).map((x) => `${x.descrizione} (${x.codice})`));
+  return {
+    replacesId: d.id,
+    numero: d.numero,
+    data: d.data,
+    tenantId: d.tenantId,
+    denominazione: f.cliente.denominazione ?? "",
+    partitaIva: f.cliente.partitaIva ?? "",
+    codiceFiscale: f.cliente.codiceFiscale ?? "",
+    indirizzo: m?.[1] ?? "",
+    cap: m?.[2] ?? "",
+    comune: m?.[3] ?? "",
+    provincia: m?.[4] ?? "",
+    destTipo: isPec ? "pec" : "codice",
+    destValore: dest,
+    tipoDocumento: d.tipoDocumento ?? "TD01",
+    formato: d.formato ?? "FPR12",
+    righe: (doc?.righe ?? []).map((r) => ({
+      descrizione: r.descrizione,
+      quantita: dec(r.quantita ?? 1),
+      prezzo: dec((r.prezzoUnitarioCents ?? 0) / 100),
+      aliquota: String(Math.round(r.aliquota ?? 22)),
+      natura: r.natura ?? "",
+    })),
+    motivo,
   };
 }
 
@@ -166,6 +246,7 @@ export async function getInvoiceFile(scope: Scope, id: string): Promise<InvoiceF
 export async function createAndSendInvoice(
   scope: Scope,
   input: NewInvoiceInput,
+  replacesInvoiceId?: string,
 ): Promise<CreateInvoiceResult> {
   const res = await invoiceServiceModule.createAndSendInvoice(scope, {
     tenantId: input.tenantId,
@@ -179,7 +260,7 @@ export async function createAndSendInvoice(
     data: input.data,
     righe: input.righe as invoiceServiceModule.NewInvoiceInput["righe"],
     idempotencyKey: input.idempotencyKey,
-  });
+  }, replacesInvoiceId ? { replacesInvoiceId } : {});
   if ("errors" in res) {
     const [path, error] = Object.entries(res.errors)[0] ?? ["", "Dati non validi"];
     return { ok: false, error, path: path || undefined };

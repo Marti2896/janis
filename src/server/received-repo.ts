@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
 import type pg from "pg";
+import { parseFatturaRicevuta } from "../sdi/fatturapa/parse.ts";
 import { verifyP7m } from "../sdi/sign/cades.ts";
 import { logEvent } from "./audit.ts";
 import { SoapFaultError } from "./notifications.ts";
@@ -103,6 +104,47 @@ export async function matchTenant(db: Pick<pg.Pool, "query">, meta: Pick<Receive
 
 export type StoreReceivedResult = { result: "stored" | "duplicate"; id: string; tenantId: string | null };
 
+export interface ReceivedSummary {
+  cessionarioDenominazione: string | null;
+  documenti: number;
+  importoTotaleCents: number | null;
+  numeri: string | null;
+}
+
+/** Riepilogo del lotto (tutti i documenti del file). Null se il file non e leggibile. */
+export function summarizeReceived(fileName: string, bytes: Buffer): ReceivedSummary | null {
+  try {
+    const f = parseFatturaRicevuta(bytes, fileName);
+    const tot = f.documenti.reduce<number | null>((a, d) => (d.totaleCents == null ? a : (a ?? 0) + d.totaleCents), null);
+    return {
+      cessionarioDenominazione: f.cliente.denominazione,
+      documenti: f.documenti.length,
+      importoTotaleCents: tot,
+      numeri: f.documenti.map((d) => d.numero).filter(Boolean).join("|") || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Completa il riepilogo delle righe ricevute prima dell'introduzione delle colonne (migliore sforzo, poche righe per volta). */
+async function backfillSummary(db: Pick<pg.Pool, "query">): Promise<void> {
+  try {
+    const r = await db.query(
+      "select id, file_name, original_bytes from received_invoices where documenti_count is null order by received_at desc limit 50",
+    );
+    for (const x of r.rows) {
+      const sm = summarizeReceived(x.file_name as string, x.original_bytes as Buffer);
+      await db.query(
+        "update received_invoices set cessionario_denominazione = $2, documenti_count = $3, importo_totale_cents = $4, numeri = $5 where id = $1",
+        [x.id, sm?.cessionarioDenominazione ?? null, sm?.documenti ?? 1, sm?.importoTotaleCents ?? null, sm?.numeri ?? null],
+      );
+    }
+  } catch {
+    /* il riepilogo e accessorio: l'elenco funziona anche senza */
+  }
+}
+
 /** Salva la fattura passiva con file originale e hash. Idempotente per IdentificativoSdI. */
 export async function storeReceivedInvoice(
   pool: pg.Pool,
@@ -110,6 +152,7 @@ export async function storeReceivedInvoice(
 ): Promise<StoreReceivedResult> {
   const { kind, meta } = extractReceivedMeta(input.fileName, input.bytes);
   const sha256 = createHash("sha256").update(input.bytes).digest("hex");
+  const summary = summarizeReceived(input.fileName, input.bytes);
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -117,8 +160,9 @@ export async function storeReceivedInvoice(
     const ins = await client.query(
       `insert into received_invoices
          (tenant_id, sdi_identifier, file_name, file_kind, original_bytes, sha256, cedente_denominazione, cedente_piva,
-          cedente_cf, cessionario_piva, cessionario_cf, numero, data, importo_cents, stato)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          cedente_cf, cessionario_piva, cessionario_cf, numero, data, importo_cents, stato,
+          cessionario_denominazione, documenti_count, importo_totale_cents, numeri)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        on conflict (sdi_identifier) do nothing returning id`,
       [
         tenantId,
@@ -136,6 +180,10 @@ export async function storeReceivedInvoice(
         meta.data,
         meta.importoCents,
         tenantId ? "received" : "unassigned",
+        summary?.cessionarioDenominazione ?? null,
+        summary?.documenti ?? 1,
+        summary?.importoTotaleCents ?? null,
+        summary?.numeri ?? null,
       ],
     );
     if (ins.rowCount === 0) {
@@ -187,6 +235,14 @@ export type ReceivedRow = {
   /** received = assegnata a un account, unassigned = in attesa di assegnazione (solo admin). */
   stato: "received" | "unassigned";
   receivedAt: Date;
+  /** Destinatario scritto nel file (denominazione). */
+  cessionarioDenominazione: string | null;
+  /** Numero di documenti nel file (lotto). */
+  documenti: number;
+  /** Totale di tutti i documenti del file. */
+  importoTotaleCents: number | null;
+  /** Numeri di tutti i documenti del file. */
+  numeri: string[];
 };
 
 export type ReceivedDetail = ReceivedRow & {
@@ -200,7 +256,8 @@ export type ReceivedDetail = ReceivedRow & {
 
 const COLS = `r.id, r.tenant_id, t.denominazione as tenant_name, r.sdi_identifier, r.file_name, r.file_kind, r.sha256,
   r.cedente_denominazione, r.cedente_piva, r.cedente_cf, r.cessionario_piva, r.cessionario_cf, r.numero,
-  to_char(r.data, 'YYYY-MM-DD') as data, r.importo_cents, r.stato, r.received_at`;
+  to_char(r.data, 'YYYY-MM-DD') as data, r.importo_cents, r.stato, r.received_at,
+  r.cessionario_denominazione, r.documenti_count, r.importo_totale_cents, r.numeri`;
 
 const toRow = (x: Record<string, unknown>): ReceivedRow => ({
   id: x.id as string,
@@ -220,6 +277,10 @@ const toRow = (x: Record<string, unknown>): ReceivedRow => ({
   importoCents: x.importo_cents == null ? null : Number(x.importo_cents),
   stato: x.stato as "received" | "unassigned",
   receivedAt: x.received_at as Date,
+  cessionarioDenominazione: (x.cessionario_denominazione as string | null) ?? null,
+  documenti: x.documenti_count == null ? 1 : Number(x.documenti_count),
+  importoTotaleCents: x.importo_totale_cents == null ? (x.importo_cents == null ? null : Number(x.importo_cents)) : Number(x.importo_totale_cents),
+  numeri: typeof x.numeri === "string" && x.numeri ? (x.numeri as string).split("|") : x.numero ? [x.numero as string] : [],
 });
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -229,6 +290,7 @@ export type ReceivedFilter = { tenantId?: string | null; limit?: number; offset?
 /** Fatture ricevute e assegnate. Il cliente vede solo le proprie; l'admin tutte le assegnate (filtro account opzionale). */
 export async function listReceivedRows(scope: Scope, filter: ReceivedFilter = {}, db: Pick<pg.Pool, "query"> = getPool()): Promise<ReceivedRow[]> {
   const tenant = effectiveTenant(scope, filter.tenantId);
+  await backfillSummary(db);
   const params: unknown[] = [];
   const where = ["r.tenant_id is not null"];
   if (tenant) {
@@ -282,6 +344,7 @@ export async function getReceivedDetail(scope: Scope, id: string, db: Pick<pg.Po
 /** Fatture passive senza account: solo admin. */
 export async function listUnassignedRows(scope: Scope, db: Pick<pg.Pool, "query"> = getPool()): Promise<ReceivedRow[]> {
   requireAdmin(scope);
+  await backfillSummary(db);
   const r = await db.query(
     `select ${COLS} from received_invoices r left join tenants t on t.id = r.tenant_id
       where r.tenant_id is null order by r.received_at desc, r.id limit 500`,

@@ -139,7 +139,7 @@ export function registerApiV1(app: FastifyInstance, deps: { pool: pg.Pool }): vo
                   ? {
                       error:
                         code === 409
-                          ? "Chiave di idempotenza o nome file già usati"
+                          ? "Richiesta già ricevuta: la fattura non è stata creata due volte."
                           : code === 422
                             ? "Dati della fattura non validi"
                             : "Invio non riuscito",

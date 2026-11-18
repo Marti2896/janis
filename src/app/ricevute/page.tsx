@@ -30,6 +30,11 @@ const fmtMoney = (v: number | null) =>
 
 const receivedLabel = (s: string) => (s === "received" ? "Ricevuta" : s === "unassigned" ? "Non assegnata" : s);
 
+function numeroLabel(r: { numeri: string[]; numero: string | null; documenti: number }): string {
+  const first = r.numeri[0] ?? r.numero ?? "-";
+  return r.documenti > 1 ? `${first} e altre ${r.documenti - 1}` : first;
+}
+
 export default async function RicevutePage() {
   const session = await requireSession();
   const isAdmin = session.user.role === "admin";
@@ -59,6 +64,7 @@ export default async function RicevutePage() {
                       <TableHead>Ricevuta il</TableHead>
                       <TableHead>Fornitore</TableHead>
                       <TableHead>Numero</TableHead>
+                      <TableHead>Intestata a</TableHead>
                       <TableHead className="text-right">Azione</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -67,14 +73,21 @@ export default async function RicevutePage() {
                       <TableRow key={r.id}>
                         <TableCell>{fmtDate(r.receivedAt)}</TableCell>
                         <TableCell>{r.cedenteDenominazione ?? r.cedentePiva ?? "-"}</TableCell>
-                        <TableCell>{r.numero ?? "-"}</TableCell>
+                        <TableCell>{numeroLabel(r)}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{r.cessionarioDenominazione ?? "-"}</div>
+                          {(r.cessionarioPiva ?? r.cessionarioCf) && (
+                            <div className="text-xs text-muted-foreground">
+                              {r.cessionarioPiva ? `P.IVA ${r.cessionarioPiva}` : `C.F. ${r.cessionarioCf}`}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <AssignDialog
                             id={r.id}
-                            tenants={tenants.map((t) => ({
-                              id: t.id,
-                              label: t.denominazione,
-                            }))}
+                            recipient={{ denominazione: r.cessionarioDenominazione, piva: r.cessionarioPiva, cf: r.cessionarioCf }}
+                            supplier={r.cedenteDenominazione ?? r.cedentePiva ?? "-"}
+                            tenants={tenants.map((t) => ({ id: t.id, nome: t.denominazione, piva: t.partitaIva, cf: t.codiceFiscale }))}
                           />
                         </TableCell>
                       </TableRow>
@@ -99,6 +112,7 @@ export default async function RicevutePage() {
                   <TableRow>
                     <TableHead>Data ricezione</TableHead>
                     <TableHead>Fornitore</TableHead>
+                    {isAdmin && <TableHead>Account</TableHead>}
                     <TableHead>Numero</TableHead>
                     <TableHead>Importo</TableHead>
                     <TableHead>Stato</TableHead>
@@ -122,8 +136,12 @@ export default async function RicevutePage() {
                           <div className="text-xs text-muted-foreground">P.IVA {r.cedentePiva}</div>
                         )}
                       </TableCell>
-                      <TableCell>{r.numero ?? "-"}</TableCell>
-                      <TableCell>{fmtMoney(r.importoCents)}</TableCell>
+                      {isAdmin && <TableCell>{r.tenantName ?? "-"}</TableCell>}
+                      <TableCell>
+                        <div>{numeroLabel(r)}</div>
+                        {r.documenti > 1 && <Badge variant="outline">{r.documenti} fatture</Badge>}
+                      </TableCell>
+                      <TableCell>{fmtMoney(r.importoTotaleCents)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{receivedLabel(r.stato)}</Badge>
                       </TableCell>

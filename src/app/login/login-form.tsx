@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertCircle, Loader2, LogIn } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, LogIn } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type LoginState } from "./actions";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, uscito = false }: { next: string; uscito?: boolean }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, {
     error: null,
     email: "",
@@ -31,6 +31,12 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form action={action} onSubmit={validate} className="flex flex-col gap-4" noValidate>
       <input type="hidden" name="next" value={next} />
+      {uscito && !state.error && (
+        <Alert>
+          <CheckCircle2 />
+          <AlertDescription>Sei uscito.</AlertDescription>
+        </Alert>
+      )}
       {state.error && (
         <Alert variant="destructive">
           <AlertCircle />

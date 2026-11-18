@@ -52,6 +52,7 @@ export function registerRicezioneFatture(app: FastifyInstance, deps: { pool: pg.
       if (op === "RiceviFatture") {
         const r = await storeReceivedInvoice(deps.pool, parseRiceviFatture(body));
         req.log.info({ result: r.result, receivedId: r.id, assigned: r.tenantId !== null }, "fattura passiva elaborata");
+        if (r.result === "duplicate") throw new SoapFaultError("IdentificativoSdI duplicato: fattura già ricevuta", "RiceviFatture");
       } else if (op === "NotificaDecorrenzaTermini" || op === "ScartoEsitoCommittente") {
         const n = await parseNotification(body);
         const result = await processNotification(deps.pool, n);

@@ -50,10 +50,10 @@ async function runInvoiceAction(formData: FormData, validateOnly: boolean): Prom
   if (provincia && !/^[A-Z]{2}$/.test(provincia)) errors["cessionario.provincia"] = "La provincia deve avere 2 lettere (es. MI)";
 
   const partitaIva = str(formData, "cessionario.partitaIva");
-  if (!/^\d{11}$/.test(partitaIva)) errors["cessionario.partitaIva"] = "La partita IVA deve avere 11 cifre";
-
   const codiceFiscale = str(formData, "cessionario.codiceFiscale").toUpperCase();
-  if (codiceFiscale && !/^(\d{11}|[A-Z0-9]{16})$/.test(codiceFiscale)) {
+  if (!partitaIva && !codiceFiscale) errors["cessionario.partitaIva"] = "Inserisci la Partita IVA o il codice fiscale";
+  else if (partitaIva && !/^\d{11}$/.test(partitaIva)) errors["cessionario.partitaIva"] = "La partita IVA deve avere 11 cifre";
+  if (codiceFiscale &&!/^(\d{11}|[A-Z0-9]{16})$/.test(codiceFiscale)) {
     errors["cessionario.codiceFiscale"] = "Il codice fiscale deve avere 11 cifre o 16 caratteri";
   }
 
@@ -80,13 +80,15 @@ async function runInvoiceAction(formData: FormData, validateOnly: boolean): Prom
   for (let i = 0; i < Math.min(count, 100); i++) {
     const descrizione = str(formData, `righe.${i}.descrizione`);
     const quantita = num(str(formData, `righe.${i}.quantita`));
-    const prezzoUnitario = num(str(formData, `righe.${i}.prezzoUnitario`));
+    const prezzoRaw = str(formData, `righe.${i}.prezzoUnitario`);
+    const prezzoUnitario = num(prezzoRaw);
     const aliquota = num(str(formData, `righe.${i}.aliquota`));
     const natura = str(formData, `righe.${i}.natura`);
     if (!descrizione) errors[`righe.${i}.descrizione`] = "La descrizione è obbligatoria";
     else if (descrizione.length > 1000) errors[`righe.${i}.descrizione`] = "La descrizione supera il limite di 1000 caratteri";
     if (!Number.isFinite(quantita) || quantita <= 0) errors[`righe.${i}.quantita`] = "La quantità deve essere maggiore di zero";
-    if (!Number.isFinite(prezzoUnitario) || prezzoUnitario < 0) errors[`righe.${i}.prezzoUnitario`] = "Prezzo non valido";
+    if (!prezzoRaw) errors[`righe.${i}.prezzoUnitario`] = "Inserisci il prezzo (anche 0)";
+    else if (!Number.isFinite(prezzoUnitario) || prezzoUnitario < 0) errors[`righe.${i}.prezzoUnitario`] = "Prezzo non valido";
     if (!ALIQUOTE.includes(aliquota)) errors[`righe.${i}.aliquota`] = "Aliquota non valida";
     if (aliquota === 0 && !NATURE_VALUES.includes(natura)) errors[`righe.${i}.natura`] = "Indica il motivo dell'esenzione";
     righe.push({ descrizione, quantita, prezzoUnitario, aliquota, ...(aliquota === 0 ? { natura } : {}) });
@@ -98,6 +100,7 @@ async function runInvoiceAction(formData: FormData, validateOnly: boolean): Prom
   if (validateOnly) return { fieldErrors: {}, error: null };
 
   const idempotencyKey = str(formData, "idempotencyKey");
+  const replacesId = str(formData, "replacesId");
   let result: Awaited<ReturnType<typeof createAndSendInvoice>>;
   try {
     result = await createAndSendInvoice(scope, {
@@ -109,7 +112,7 @@ async function runInvoiceAction(formData: FormData, validateOnly: boolean): Prom
     formato: formato as "FPR12" | "FPA12",
     data,
     righe,
-    });
+    }, replacesId || undefined);
   } catch (err) {
     console.error("createInvoiceAction", err);
     return { fieldErrors: {}, error: "Errore imprevisto durante l'invio. Riprova: i dati inseriti sono ancora nel modulo." };

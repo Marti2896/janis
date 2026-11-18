@@ -5,7 +5,7 @@ type Tone = "default" | "secondary" | "destructive" | "outline" | "warning";
 const STATUS: Record<string, { label: string; tone: Tone }> = {
   draft: { label: "In coda", tone: "secondary" },
   queued: { label: "In coda", tone: "secondary" },
-  signed: { label: "Firmata", tone: "secondary" },
+  signed: { label: "In coda", tone: "secondary" },
   sending: { label: "Invio in corso", tone: "secondary" },
   sent: { label: "Inviata", tone: "outline" },
   delivered: { label: "Consegnata", tone: "default" },
@@ -16,12 +16,12 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   terms_expired: { label: "Termini scaduti", tone: "warning" },
   send_error: { label: "Errore invio", tone: "destructive" },
   send_unknown: { label: "Esito incerto", tone: "warning" },
+  replaced: { label: "Sostituita", tone: "outline" },
 };
 
 /** Stati selezionabili nel filtro della lista, nell'ordine della spec. */
 export const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "queued", label: "In coda" },
-  { value: "signed", label: "Firmata" },
   { value: "sent", label: "Inviata" },
   { value: "delivered", label: "Consegnata" },
   { value: "rejected", label: "Scartata" },
@@ -31,6 +31,7 @@ export const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "terms_expired", label: "Termini scaduti" },
   { value: "send_error", label: "Errore invio" },
   { value: "send_unknown", label: "Esito incerto" },
+  { value: "replaced", label: "Sostituita" },
 ];
 
 export function statusLabel(status: string): string {

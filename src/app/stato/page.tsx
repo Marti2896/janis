@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, Bell, Clock } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { statusLabel } from "@/components/status-badge";
+import { errorSummary } from "@/lib/invoice-guidance";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Stato del canale" };
@@ -53,6 +53,14 @@ export default async function StatoPage() {
                 {prod ? "Produzione" : "Demo"}
               </Badge>
             </div>
+            <p>
+              <span className="text-muted-foreground">Collegamento al Sistema di Interscambio: </span>
+              <span className="font-medium">
+                {settings.endpoint
+                  ? "Collegamento attivo"
+                  : "Collegamento non attivo: le fatture restano in coda finché il canale non viene attivato"}
+              </span>
+            </p>
             {!prod && !isAdmin && (
               <p className="text-muted-foreground">Ambiente di prova: le fatture non hanno valore fiscale.</p>
             )}
@@ -105,8 +113,7 @@ export default async function StatoPage() {
                   <li key={`${e.invoiceId}-${String(e.at)}`} className="flex justify-between gap-4">
                     <Link href={`/fatture/${e.invoiceId}`} className="underline-offset-4 hover:underline">
                       Fattura {e.numero}
-                      {e.cliente ? ` - ${e.cliente}` : ""}: {statusLabel(e.status).toLowerCase()}
-                      {e.message ? `, ${e.message}` : ""}
+                      {e.cliente ? ` a ${e.cliente}` : ""}: {errorSummary(e.status, e.message)}
                     </Link>
                     <span className="shrink-0 text-muted-foreground">
                       {new Date(e.at).toLocaleString("it-IT")}

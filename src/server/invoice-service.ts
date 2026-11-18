@@ -63,6 +63,10 @@ export type InvoiceEvent = {
 export type InvoiceDetail = InvoiceRow & {
   cedenteDenominazione: string | null;
   cedentePiva: string | null;
+  /** Id della fattura che ha sostituito questa (stato Sostituita). */
+  replacedBy: string | null;
+  /** Id della fattura scartata che questa sostituisce. */
+  replaces: string | null;
   events: InvoiceEvent[];
 };
 
@@ -145,7 +149,8 @@ export async function getInvoice(scope: Scope, id: string, opts: Opts = {}): Pro
   if (!UUID.test(id)) return null;
   const tenant = effectiveTenant(scope, null);
   const r = await db.query(
-    `select ${COLS}, t.partita_iva as cedente_piva, t.denominazione as cedente_denominazione
+    `select ${COLS}, t.partita_iva as cedente_piva, t.denominazione as cedente_denominazione, i.replaced_by,
+            (select p.id from invoices p where p.replaced_by = i.id limit 1) as replaces
        from invoices i join tenants t on t.id = i.tenant_id
       where i.id = $1 ${tenant ? "and i.tenant_id = $2" : ""}`,
     tenant ? [id, tenant] : [id],
@@ -192,7 +197,14 @@ export async function getInvoice(scope: Scope, id: string, opts: Opts = {}): Pro
       }),
     ),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
-  return { ...toRow(x), cedenteDenominazione: x.cedente_denominazione as string, cedentePiva: (x.cedente_piva as string).trim(), events };
+  return {
+    ...toRow(x),
+    cedenteDenominazione: x.cedente_denominazione as string,
+    cedentePiva: (x.cedente_piva as string).trim(),
+    replacedBy: (x.replaced_by as string | null) ?? null,
+    replaces: (x.replaces as string | null) ?? null,
+    events,
+  };
 }
 
 /** File firmato inviato (.xml.p7m). Fattura di un altro tenant o non firmata: null. */
@@ -235,6 +247,8 @@ export type CreateOptions = {
   db?: pg.Pool;
   actorUserId?: string | null;
   source?: "web" | "api";
+  /** Id di una fattura scartata (NS) da sostituire: la nuova riusa numero e data, la vecchia diventa «Sostituita». */
+  replacesInvoiceId?: string;
   fetch?: typeof fetch;
   /** Solo test: ambiente ed endpoint al posto di quelli salvati in channel_settings. */
   channel?: { environment: "demo" | "production"; endpoint: string };
@@ -261,8 +275,10 @@ function validDate(s: string): boolean {
 export function validateNewInvoice(input: NewInvoiceInput): Record<string, string> {
   const e: Record<string, string> = {};
   if (!input.cessionarioDenominazione?.trim()) e.cessionarioDenominazione = "La denominazione del cessionario è obbligatoria";
-  if (!/^\d{11}$/.test((input.cessionarioPartitaIva ?? "").trim())) e.cessionarioPartitaIva = "La partita IVA deve avere 11 cifre";
+  const pivaIn = (input.cessionarioPartitaIva ?? "").trim();
   const cf = (input.cessionarioCodiceFiscale ?? "").trim();
+  if (!pivaIn && !cf) e.cessionarioPartitaIva = "Inserisci la Partita IVA o il codice fiscale";
+  else if (pivaIn && !/^\d{11}$/.test(pivaIn)) e.cessionarioPartitaIva = "La partita IVA deve avere 11 cifre";
   if (cf && !/^([A-Za-z0-9]{16}|\d{11})$/.test(cf)) e.cessionarioCodiceFiscale = "Il codice fiscale deve avere 16 caratteri (o 11 cifre)";
   if (input.tipoDocumento !== "TD01" && input.tipoDocumento !== "TD04") e.tipoDocumento = "Tipo documento non valido (TD01 o TD04)";
   const formato = input.formato ?? "FPR12";
@@ -375,7 +391,7 @@ function toModel(
     },
     cessionario: {
       idPaese: "IT",
-      partitaIva: input.cessionarioPartitaIva.trim(),
+      ...(input.cessionarioPartitaIva?.trim() ? { partitaIva: input.cessionarioPartitaIva.trim() } : {}),
       ...(cf ? { codiceFiscale: cf.toUpperCase() } : {}),
       denominazione: input.cessionarioDenominazione.trim(),
       sede: input.cessionarioSede
@@ -435,8 +451,24 @@ const normalizedBody = (i: NewInvoiceInput) =>
  */
 export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput, opts: CreateOptions = {}): Promise<CreateInvoiceResult> {
   const db = opts.db ?? getPool();
-  const errors = validateNewInvoice(input);
   const tenantId = effectiveTenant(scope, input.tenantId);
+  // Sostituzione di una fattura scartata: stesso numero e stessa data della scartata (decisione dell'umano).
+  let old: { id: string; numero: string; anno: number | null; progressivo: number | null } | null = null;
+  if (opts.replacesInvoiceId && tenantId && UUID.test(tenantId)) {
+    const o = UUID.test(opts.replacesInvoiceId)
+      ? await db.query(
+          "select id, numero, anno, progressivo, to_char(data, 'YYYY-MM-DD') as data, status from invoices where id = $1 and tenant_id = $2",
+          [opts.replacesInvoiceId, tenantId],
+        )
+      : { rows: [] as Record<string, unknown>[] };
+    const row = o.rows[0];
+    if (!row || row.status !== "rejected") {
+      return { errors: { _form: "Si può rifare solo una fattura scartata dal Sistema di Interscambio." } };
+    }
+    old = { id: row.id as string, numero: row.numero as string, anno: row.anno as number | null, progressivo: row.progressivo as number | null };
+    input = { ...input, data: row.data as string };
+  }
+  const errors = validateNewInvoice(input);
   if (!tenantId) errors.tenantId = "Scegli l'account per cui emettere la fattura";
   else if (!UUID.test(tenantId)) errors.tenantId = "Account non valido";
   if (Object.keys(errors).length) return { errors };
@@ -508,7 +540,20 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
          on conflict (tenant_id, anno) do update set ultimo = invoice_counters.ultimo + 1 returning ultimo`,
         [tenant.id, a],
       );
-    const numeroProg = (await bump(anno)).rows[0].ultimo as number;
+    if (old) {
+      // Libera il numero: la scartata passa a «replaced» (l'indice unico la esclude) e il contatore non avanza.
+      const lock = await client.query("select status from invoices where id = $1 and tenant_id = $2 for update", [old.id, tenant.id]);
+      if (lock.rows[0]?.status !== "rejected") {
+        await client.query("rollback");
+        return { errors: { _form: "Si può rifare solo una fattura scartata dal Sistema di Interscambio." } };
+      }
+      await client.query("update invoices set status = 'replaced', updated_at = now() where id = $1", [old.id]);
+      await client.query(
+        `insert into invoice_status_history (invoice_id, tenant_id, from_status, to_status, causale, source) values ($1, $2, 'rejected', 'replaced', $3, 'client')`,
+        [old.id, tenant.id, "Sostituita da una nuova fattura con lo stesso numero"],
+      );
+    }
+    const numeroProg = old ? (old.progressivo ?? (Number(old.numero.split("/")[0]) || 0)) : (await bump(anno)).rows[0].ultimo as number;
     // Il NomeFile e unico: salta i progressivi di invio gia usati dal tenant (es. fatture importate).
     let invioProg = (await bump(0)).rows[0].ultimo as number;
     for (let i = 0; i < 1000; i++) {
@@ -519,7 +564,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
       if (!taken.rowCount) break;
       invioProg = (await bump(0)).rows[0].ultimo as number;
     }
-    const numero = `${numeroProg}/${anno}`;
+    const numero = old ? old.numero : `${numeroProg}/${anno}`;
     const progressivo = invioProg.toString(36).toUpperCase().padStart(5, "0");
 
     const built = await buildFatturaXml(toModel(input, tenant, numero, progressivo));
@@ -547,7 +592,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
         anno,
         numeroProg,
         input.cessionarioDenominazione.trim(),
-        input.cessionarioPartitaIva.trim(),
+        (input.cessionarioPartitaIva ?? "").trim() || null,
         (input.cessionarioCodiceFiscale ?? "").trim() || null,
         importoCents,
         input.tipoDocumento,
@@ -558,6 +603,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
       ],
     );
     invoiceId = ins.rows[0].id as string;
+    if (old) await client.query("update invoices set replaced_by = $2 where id = $1", [old.id, invoiceId]);
     const hist = (from: string | null, to: string, causale: string) =>
       client.query(
         `insert into invoice_status_history (invoice_id, tenant_id, from_status, to_status, causale, source) values ($1, $2, $3, $4, $5, 'client')`,

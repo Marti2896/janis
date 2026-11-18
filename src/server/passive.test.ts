@@ -109,7 +109,10 @@ describe.skipIf(!dbReady)("fatture passive (RicezioneFatture)", () => {
     const f = await passiva({ piva: pivaA }, "80");
     const soap = buildDemoReceivedInvoiceSoap({ sdiIdentifier: rnd(12), nomeFile: f.nomeFile, bytes: Buffer.from(f.xml) });
     expect((await post(soap)).statusCode).toBe(200);
-    expect((await post(soap)).statusCode).toBe(200);
+    // Il duplicato è rifiutato con un Fault SOAP e non crea un secondo record.
+    const dup = await post(soap);
+    expect(dup.statusCode).toBe(500);
+    expect(dup.body).toMatch(/duplicato/);
     const id = /<IdentificativoSdI>(\d+)</.exec(soap)![1];
     expect((await pool.query("select 1 from received_invoices where sdi_identifier = $1", [id])).rowCount).toBe(1);
   });

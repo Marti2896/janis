@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock, Download } from "lucide-react";
+import { ArrowLeft, Clock, Download, RotateCcw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { STATUS_GUIDANCE, eventLabel, outcomeLabel } from "@/lib/invoice-guidance";
+import { NOTIFICATION_LABEL, STATUS_GUIDANCE, eventLabel, outcomeLabel, scartoAdvice, scartoLine } from "@/lib/invoice-guidance";
 import { formatDate, formatDateTime, formatEuro } from "@/lib/format";
 import { getInvoiceDetail } from "@/lib/server-api";
 import { requireSession } from "@/lib/session";
@@ -47,7 +47,6 @@ export default async function InvoiceDetailPage({
     (e) => e.kind !== "stato" || !notifTimes.some((t) => Math.abs(t - new Date(e.at).getTime()) <= 2000),
   );
   const guidance = STATUS_GUIDANCE[invoice.status];
-
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
       <Button asChild variant="ghost" className="w-fit">
@@ -61,6 +60,36 @@ export default async function InvoiceDetailPage({
         <StatusBadge status={invoice.status} />
       </div>
       {guidance && <p className="-mt-2 text-muted-foreground">{guidance}</p>}
+
+      {invoice.status === "rejected" && (
+        <Button asChild className="w-fit">
+          <Link href={`/fatture/nuova?correggi=${invoice.id}`}>
+            <RotateCcw />
+            Correggi e crea di nuovo
+          </Link>
+        </Button>
+      )}
+      {invoice.replacedBy && (
+        <Alert>
+          <AlertDescription>
+            <p>
+              Questa fattura è stata sostituita da una nuova fattura con lo stesso numero.{" "}
+              <Link href={`/fatture/${invoice.replacedBy}`} className="underline underline-offset-4">
+                Apri la nuova fattura
+              </Link>
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+      {invoice.replaces && (
+        <p className="text-sm text-muted-foreground">
+          Sostituisce una fattura scartata dal Sistema di Interscambio:{" "}
+          <Link href={`/fatture/${invoice.replaces}`} className="underline underline-offset-4">
+            vedi la fattura scartata
+          </Link>
+          .
+        </p>
+      )}
 
       {(invoice.status === "draft" || invoice.status === "signed") && (
         <Alert variant="warning">
@@ -112,12 +141,25 @@ export default async function InvoiceDetailPage({
                 <li key={`${e.at}-${i}`} className="relative flex flex-col gap-1 pb-6 pl-6 last:pb-0">
                   <span className="absolute top-1.5 -left-1.5 size-3 rounded-full border bg-primary" />
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{e.kind === "invio" ? "Invio" : e.kind === "notifica" ? "Notifica" : "Cambio stato"}</Badge>
-                    <span className="font-medium">{eventLabel(e.label)}</span>
+                    <Badge variant="secondary">
+                      {e.kind === "invio" ? "Invio" : e.kind === "notifica" ? ((e.type && NOTIFICATION_LABEL[e.type]) ?? "Notifica") : "Cambio stato"}
+                    </Badge>
+                    {e.label && <span className="font-medium">{eventLabel(e.label)}</span>}
                   </div>
                   <time className="text-sm text-muted-foreground">{formatDateTime(e.at)}</time>
                   {outcomeLabel(e.outcome) && <p className="text-sm">{outcomeLabel(e.outcome)}</p>}
-                  {e.error && <p className="text-sm text-destructive">{e.error}</p>}
+                  {e.errors?.length ? (
+                    <ul className="flex flex-col gap-1 text-sm">
+                      {e.errors.map((x) => (
+                        <li key={x.codice}>
+                          <span className="text-destructive">{scartoLine(x)}</span>
+                          <span className="block text-muted-foreground">{scartoAdvice(x.codice)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    e.error && <p className="text-sm text-destructive">{e.error}</p>
+                  )}
                 </li>
               ))}
             </ol>

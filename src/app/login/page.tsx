@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { CheckCircle2, Network } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Network } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/session";
 import { LoginForm } from "./login-form";
@@ -27,13 +26,7 @@ export default async function LoginPage({
           <CardDescription>Accedi con il tuo account per gestire le fatture elettroniche.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {uscito && (
-            <Alert>
-              <CheckCircle2 />
-              <AlertDescription>Sei uscito.</AlertDescription>
-            </Alert>
-          )}
-          <LoginForm next={next} />
+          <LoginForm next={next} uscito={Boolean(uscito)} />
         </CardContent>
       </Card>
     </main>
