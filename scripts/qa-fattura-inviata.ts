@@ -4,10 +4,10 @@ import { parseArgs } from "node:util";
 import { getPool } from "../src/server/pool.ts";
 import { createQaInvoice, type QaStato, type QaTenant } from "../src/server/qa-invoice.ts";
 
-const { values } = parseArgs({ options: { tenant: { type: "string" }, stato: { type: "string" } } });
+const { values } = parseArgs({ options: { tenant: { type: "string" }, stato: { type: "string" }, cessionario: { type: "string" }, "piva-cessionario": { type: "string" } } });
 const pool = getPool();
 try {
-  const out = await createQaInvoice(pool, { tenant: values.tenant as QaTenant, stato: values.stato as QaStato });
+  const out = await createQaInvoice(pool, { tenant: values.tenant as QaTenant, stato: values.stato as QaStato, cessionario: values.cessionario, pivaCessionario: values["piva-cessionario"] });
   console.log(JSON.stringify(out));
 } catch (err) {
   console.error(err instanceof Error ? err.message : err);

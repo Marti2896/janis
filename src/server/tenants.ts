@@ -73,6 +73,10 @@ export async function createTenant(
   if (!denominazione) throw new ValidationError("La denominazione è obbligatoria.", "denominazione");
   if (!/^\d{11}$/.test(piva)) throw new ValidationError("La partita IVA deve avere 11 cifre.", "partitaIva");
   if (cf && !/^([A-Z0-9]{16}|\d{11})$/.test(cf)) throw new ValidationError("Codice fiscale non valido.", "codiceFiscale");
+  const emailNorm = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) throw new ValidationError("Email non valida.", "email");
+  const emailDup = await db.query("select 1 from users where lower(email) = $1", [emailNorm]);
+  if (emailDup.rowCount) throw new ValidationError("Esiste già un utente con questa email.", "email");
   const dup = await db.query("select 1 from tenants where partita_iva = $1", [piva]);
   if (dup.rowCount) throw new ValidationError("Esiste già un account con questa partita IVA.", "partitaIva");
   const r = await db.query(

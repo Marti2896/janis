@@ -68,7 +68,7 @@ export const AUDIT_CATEGORIES = [
 type Settings = { environment?: string; endpoints?: Record<string, string> };
 
 /** Righe di dettaglio leggibili (valori precedenti e nuovi) per le modifiche alla configurazione del canale. */
-export function auditChangeLines(event: string, detail: Record<string, unknown>): string[] {
+export function auditChangeLines(event: string, detail: Record<string, unknown>, showUnchanged = false): string[] {
   if (event !== "channel.settings_changed") return [];
   const before = (detail.before ?? {}) as Settings;
   const after = (detail.after ?? {}) as Settings;
@@ -80,6 +80,10 @@ export function auditChangeLines(event: string, detail: Record<string, unknown>)
     const b = before.endpoints?.[k] ?? "";
     const a = after.endpoints?.[k] ?? "";
     if (a !== b) lines.push(`Endpoint ${k === "demo" ? "demo" : "produzione"}: ${val(b)} → ${val(a)}`);
+  }
+  if (lines.length === 0 && showUnchanged) {
+    const ep = after.endpoints?.[after.environment === "production" ? "production" : "demo"] ?? "";
+    lines.push(`Nessuna modifica. Ambiente ${env(after.environment)}, endpoint ${val(ep)}`);
   }
   return lines;
 }

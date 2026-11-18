@@ -476,7 +476,9 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
           <dl className="grid gap-2 text-sm sm:grid-cols-[auto_1fr]">
             <dt className="text-muted-foreground">Cliente</dt>
             <dd>
-              {sv("cessionario.denominazione")} (P.IVA {sv("cessionario.partitaIva")})
+              {sv("cessionario.denominazione")}
+              {sv("cessionario.partitaIva") ? ` (P.IVA ${sv("cessionario.partitaIva")})` : ""}
+              {!sv("cessionario.partitaIva") && sv("cessionario.codiceFiscale") ? ` (CF ${sv("cessionario.codiceFiscale")})` : ""}
             </dd>
             <dt className="text-muted-foreground">{sv("destinazione.tipo") === "pec" ? "PEC" : "Codice destinatario"}</dt>
             <dd>{sv("destinazione.valore")}</dd>

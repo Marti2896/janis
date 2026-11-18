@@ -138,13 +138,13 @@ export default async function AuditPage({
                         {new Date(r.createdAt).toLocaleString("it-IT")}
                       </TableCell>
                       <TableCell>
-                        {r.tenantName ?? (r.tenantId ? tenantName(r.tenantId) : null) ?? (
+                        {r.tenantName ?? (r.tenantId ? tenantName(r.tenantId) : null) ?? r.actorEmail ?? (
                           <span className="text-muted-foreground">Sistema</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {auditActionLabel(r.event, r.detail)}
-                        {auditChangeLines(r.event, r.detail).map((line) => (
+                        {auditChangeLines(r.event, r.detail, true).map((line) => (
                           <span key={line} className="block text-xs text-muted-foreground">
                             {line}
                           </span>

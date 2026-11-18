@@ -36,6 +36,7 @@ export type AuditRow = {
   tenantId: string | null;
   tenantName: string | null;
   actorUserId: string | null;
+  actorEmail: string | null;
   event: string;
   entity: string;
   entityId: string | null;
@@ -85,8 +86,9 @@ export async function listAudit(scope: Scope, filter: AuditFilter = {}, db: Db =
   const r = await db.query(
     `select a.id, a.created_at, a.tenant_id, t.denominazione as tenant_name, a.actor_user_id,
             a.event, a.entity, a.entity_id, a.outcome, a.detail,
-            i.numero as invoice_numero, ri.numero as received_numero, u.email as user_email, k.name as key_name
+            i.numero as invoice_numero, ri.numero as received_numero, u.email as user_email, k.name as key_name, ua.email as actor_email
        from audit_log a left join tenants t on t.id = a.tenant_id
+       left join users ua on ua.id = a.actor_user_id
        left join invoices i on a.entity = 'invoice' and a.entity_id = i.id::text
        left join received_invoices ri on a.entity = 'received_invoice' and a.entity_id = ri.id::text
        left join users u on a.entity = 'user' and a.entity_id = u.id::text
@@ -112,6 +114,8 @@ export async function listAudit(scope: Scope, filter: AuditFilter = {}, db: Db =
       objectLabel = x.key_name ? `Chiave ${x.key_name}` : typeof detail.name === "string" ? `Chiave ${detail.name}` : null;
     } else if (x.entity === "sdi_notification" && typeof detail.type === "string") {
       objectLabel = "Notifica SdI";
+    } else if (x.entity === "channel_settings") {
+      objectLabel = "Impostazioni del canale";
     } else if (typeof detail.numero === "string") {
       objectLabel = `Fattura ${detail.numero}`;
     }
@@ -121,6 +125,7 @@ export async function listAudit(scope: Scope, filter: AuditFilter = {}, db: Db =
     tenantId: x.tenant_id,
     tenantName: x.tenant_name,
     actorUserId: x.actor_user_id,
+    actorEmail: x.actor_email ?? null,
     event: x.event,
     entity: x.entity,
     entityId: x.entity_id,

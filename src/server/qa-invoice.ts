@@ -20,7 +20,7 @@ export interface QaInvoiceResult {
   stato: string;
 }
 
-export async function createQaInvoice(db: pg.Pool, opts: { tenant: QaTenant; stato: QaStato; sdiEnv?: string }): Promise<QaInvoiceResult> {
+export async function createQaInvoice(db: pg.Pool, opts: { tenant: QaTenant; stato: QaStato; sdiEnv?: string; cessionario?: string; pivaCessionario?: string }): Promise<QaInvoiceResult> {
   if ((opts.sdiEnv ?? process.env.SDI_ENV) === "production") throw new Error("Rifiuto di girare con SDI_ENV=production");
   if (opts.tenant !== "alfa" && opts.tenant !== "beta") throw new Error("--tenant deve essere alfa o beta");
   if (opts.stato !== "sent" && opts.stato !== "delivered") throw new Error("--stato deve essere sent o delivered");
@@ -30,12 +30,15 @@ export async function createQaInvoice(db: pg.Pool, opts: { tenant: QaTenant; sta
   if (!tenant) throw new Error(`Tenant ${opts.tenant} non trovato: esegui prima npm run db:seed`);
 
   const suffix = randomBytes(3).toString("hex");
+  const piva = opts.pivaCessionario ?? "12345678903";
+  if (!/^\d{11}$/.test(piva)) throw new Error("--piva-cessionario deve avere 11 cifre");
+  const denominazione = opts.cessionario?.trim() || `Cliente prova ${suffix}`;
   const res = await createAndSendInvoice(
     { role: "admin" },
     {
       tenantId: tenant.id,
-      cessionarioDenominazione: `Cliente prova ${suffix}`,
-      cessionarioPartitaIva: "12345678903",
+      cessionarioDenominazione: denominazione,
+      cessionarioPartitaIva: piva,
       destinazione: { tipo: "codice", valore: "0000000" },
       tipoDocumento: "TD01",
       data: new Date().toISOString().slice(0, 10),

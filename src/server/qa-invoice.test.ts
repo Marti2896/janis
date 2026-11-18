@@ -53,6 +53,14 @@ describe.skipIf(!dbReady)("script qa:fattura-inviata e fattura scartata rifatta"
     expect(h.rows.map((r) => r.to_status)).toEqual(["draft", "signed", "sent", "delivered"]);
   });
 
+  it("usa la denominazione del cessionario nel DB e nell'XML firmato", async () => {
+    const r = await createQaInvoice(pool, { tenant: "alfa", stato: "sent", cessionario: "qa-Cessionario Prova Srl", pivaCessionario: "12345678903" });
+    const row = await pool.query("select * from invoices where id = $1", [r.id]);
+    expect(JSON.stringify(row.rows[0])).toContain("qa-Cessionario Prova Srl");
+    const bytes = Object.values(row.rows[0]).find((v) => Buffer.isBuffer(v)) as Buffer | undefined;
+    if (bytes) expect(bytes.toString("latin1")).toContain("qa-Cessionario Prova Srl");
+  });
+
   it("rifiuta di girare in produzione", async () => {
     await expect(createQaInvoice(pool, { tenant: "alfa", stato: "sent", sdiEnv: "production" })).rejects.toThrow(/production/);
   });

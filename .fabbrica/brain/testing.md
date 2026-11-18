@@ -45,7 +45,7 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 | Alfa | 3/2026 | IT01234567890_alfa3.xml.p7m | 990000003 | scartata | qualsiasi = fuori sequenza |
 | Beta | 1/2026, 2/2026, 3/2026 | IT09876543210_beta1..3.xml.p7m | 991000001..3 | come Alfa | come Alfa |
 
-  Stato verificato al triage it.12 (run #406): tutte e sei intatte, zero notifiche ricevute. Sono fixture DEDICATE alle prove di notifica, non dati di un'altra corsia: il QA della corsia notifiche le usa senza chiedere (issue #89). Ordine consigliato per non bruciarle: su Alfa 2/2026 (inviata) prima un NE o DT (fuori sequenza, nessuna regressione), poi MC; su Alfa 1/2026 (consegnata) prima un MC (fuori sequenza), poi NE EC01; su Beta 1/2026 il DT; Beta 2/2026 resta di riserva. Quando sarà disponibile lo script `npm run qa:fattura-inviata` (work package aperto in it.12) usare quello, che crea ogni volta una fattura nuova.
+  Stato verificato al triage it.12 (run #406): tutte e sei intatte, zero notifiche ricevute. Sono fixture DEDICATE alle prove di notifica, non dati di un'altra corsia: il QA della corsia notifiche le usa senza chiedere (issue #89). Ordine consigliato per non bruciarle: su Alfa 2/2026 (inviata) prima un NE o DT (fuori sequenza, nessuna regressione), poi MC; su Alfa 1/2026 (consegnata) prima un MC (fuori sequenza), poi NE EC01; su Beta 1/2026 il DT; Beta 2/2026 resta di riserva. Preferire comunque lo script `npm run qa:fattura-inviata` (sezione QA), che crea ogni volta una fattura nuova e non consuma queste fixture.
   Sono dati di test condivisi: il QA può inviarci notifiche (servono a questo). Ogni notifica che cambia stato è definitiva (append-only): annota nel report quali hai consumato. Il seed è idempotente su nome_file, quindi rilanciarlo non le ripristina.
 - Sede dei tenant (migrazione 0008, seed solo se vuota): Alfa Srl = Via Roma 1, 20121 Milano (MI); Beta Spa = Via Torino 20, 10121 Torino (TO). Un tenant senza indirizzo, CAP e comune non può emettere fatture (messaggio nel form, 422 in API con campo `_form`). I nuovi account da /admin/account richiedono indirizzo, CAP (5 cifre), comune; provincia opzionale.
 - Fattura demo storica: DEMO-0001, nome_file `IT01234567890_00001.xml.p7m`, sdi_identifier `9900000001`.
@@ -95,24 +95,24 @@ Non si prova sulla preview (gira in demo, non va riconfigurata). Coperto da test
 - Preview su 127.0.0.1 e idratazione: Next 16 in dev blocca con 403 gli asset `/_next/*` richiesti da origini diverse da `localhost` (`allowedDevOrigins`). Senza `allowedDevOrigins: ['127.0.0.1']` in `next.config.ts` la pagina arriva dal server ma React non si idrata (menu, Dialog, Select e form non rispondono, i form fanno GET). Controllo rapido: `curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: same-origin" -H "Sec-Fetch-Mode: no-cors" http://127.0.0.1:4810/_next/static/chunks/<un chunk .js preso dall'HTML>` deve dare 200, non 403. Dopo una modifica a `next.config.ts` la preview va riavviata dall'infrastruttura.
 
 - Database del QA: `docker compose exec -T postgres psql -U sdi -d sdi_channel` (psql non è installato sull'host).
+- MAI inserire fatture, storico o notifiche direttamente nel DB con SQL: si saltano le regole di sequenza e audit e si producono falsi bug (issue #103, cancellata: QA3/9001 e QA3/9003 erano righe scritte a mano). Per avere fatture in un certo stato usa lo script qui sotto e il generatore di notifiche.
 
+### Fattura Inviata o Consegnata di prova (script, autorizzato per tutte le corsie)
+Migrazioni richieste: 0009_received_summary.sql (riepilogo ricevute) e 0010_fattura_sostituita.sql (stato Sostituita), applicate da `npm run db:migrate`.
+```
+npm run --silent qa:fattura-inviata -- --tenant alfa|beta --stato sent|delivered [--cessionario "qa2-Nome Srl"]
+```
+Crea una fattura NUOVA con numero dal contatore reale, file firmato col certificato di test, storico coerente (draft, signed, sent; con delivered anche la notifica RC) e audit. Stampa JSON con id, numero, nome_file, sdi_identifier, stato. Rifiuta di girare con SDI_ENV=production. Autorizzato al QA (decisione triage it.13, issue #99): sono dati di sviluppo. L'opzione `--cessionario` per il prefisso della corsia è in lavorazione (work package it.13); finché manca, usare lo script com'è e annotare nel report numero e id delle fatture create.
 
-## Run #406 · builder · Script fattura di prova, migrazioni 0009 e 0010
+Percorsi di prova:
+- MC: `--stato sent`, poi notifica MC (atteso Mancata consegna).
+- NE EC01/EC02 e DT: `--stato delivered`, poi NE o DT.
+- Fuori sequenza: `--stato sent` e invia NE o DT (registrata in timeline, stato resta Inviata); oppure `--stato delivered` e invia MC.
+- «Correggi e crea di nuovo»: `--stato sent`, notifica NS, poi come cliente.alfa apri la fattura Scartata e premi il pulsante.
+Notifiche: `npm run --silent sdi:notifica-demo -- --tipo <T> --id <sdi_identifier> --nome-file <nome_file> > /tmp/n.xml` e curl verso `/sdi/ricezione/trasmissione-fatture` (sezione Endpoint API).
 
-## Avvio dati
-- `export DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel`
-- `node scripts/migrate.mjs` applica 0009_received_summary.sql (riepilogo fatture ricevute) e 0010_fattura_sostituita.sql (stato Sostituita e numero riusabile).
+### Stati non riproducibili dalla preview
+- Stato vuoto generico: crea da /admin/account un tenant `qa2-Vuoto Srl` con primo utente; quel cliente non ha fatture.
+- Skeleton e Alert «Riprova»: con dati locali il caricamento è troppo veloce e un mock di rete non basta (sono server component). Si verificano leggendo `loading.tsx` ed `error.tsx` della pagina: se esistono e usano Skeleton e Alert con Riprova, il criterio passa per ispezione del codice (annotarlo nel report).
 
-## Script di sviluppo
-`npm run qa:fattura-inviata -- --tenant alfa|beta --stato sent|delivered`
-Crea una fattura nuova per il tenant con numero dal contatore reale, file firmato con il certificato di test, storico coerente (draft, signed, sent e per delivered anche una notifica RC) e audit. Stampa su stdout JSON con id, numero, nome_file, sdi_identifier, stato. Rifiuta di girare se SDI_ENV=production.
-
-## Prova di «Correggi e crea di nuovo»
-1. Crea una fattura inviata con lo script (--stato sent).
-2. Genera una notifica NS: `npm run --silent sdi:notifica-demo -- --tipo NS --id <sdi_identifier> --nome-file <nome_file> > /tmp/ns.xml` e inviala con `curl -X POST http://localhost:4811/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data-binary @/tmp/ns.xml`.
-3. Entra come cliente.alfa@interscambio.test (Cliente-dev-2026!), apri la fattura Scartata e premi «Correggi e crea di nuovo».
-
-## Test
-`DATABASE_URL=... npx vitest run src/server/qa-invoice.test.ts src/server/passive.test.ts`
-
-Nessuna nuova variabile d'ambiente.
+Test dello script: `DATABASE_URL=... npx vitest run src/server/qa-invoice.test.ts src/server/passive.test.ts`.
