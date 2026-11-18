@@ -107,7 +107,14 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
   const [pre, setPre] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);
   const [tenantSel, setTenantSel] = useState(prefill?.tenantId ?? "");
-  const e = Object.keys(pre).length ? pre : state.fieldErrors;
+  const [cleared, setCleared] = useState<Set<string>>(new Set());
+  const e = Object.fromEntries(Object.entries(Object.keys(pre).length ? pre : state.fieldErrors).filter(([k]) => !cleared.has(k)));
+
+  function onFieldChange(ev: React.FormEvent<HTMLFormElement>) {
+    const t = ev.target as HTMLInputElement;
+    if (!t?.name || !t.value?.trim()) return;
+    setCleared((c) => (c.has(t.name) ? c : new Set(c).add(t.name)));
+  }
   const tot = totals(rows);
   const cedente = role === "admin" ? tenants.find((t) => t.id === tenantSel) : tenants[0];
 
@@ -123,6 +130,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
     setChecking(true);
     validateInvoiceAction(fd)
       .then((res) => {
+        setCleared(new Set());
         setPre(res.fieldErrors);
         if (Object.keys(res.fieldErrors).length === 0 && !res.error) setSummary(fd);
       })
@@ -149,7 +157,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
     : [];
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
+    <form onSubmit={onSubmit} onChange={onFieldChange} className="flex flex-col gap-6" noValidate>
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {prefill && <input type="hidden" name="replacesId" value={prefill.replacesId} />}
 

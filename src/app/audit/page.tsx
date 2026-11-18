@@ -164,7 +164,9 @@ export default async function AuditPage({
                         )}
                       </TableCell>
                       <TableCell>
-                        {r.outcome === "error" ? (
+                        {r.event === "notification.incompatible_state" ? (
+                          <Badge variant="outline">Ignorata</Badge>
+                        ) : r.outcome === "error" ? (
                           <div className="flex flex-col items-start gap-1">
                             <Badge variant="destructive">Errore</Badge>
                             {auditErrorReason(r.event, r.detail) && (

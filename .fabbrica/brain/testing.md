@@ -95,14 +95,15 @@ Non si prova sulla preview (gira in demo, non va riconfigurata). Coperto da test
 - Preview su 127.0.0.1 e idratazione: Next 16 in dev blocca con 403 gli asset `/_next/*` richiesti da origini diverse da `localhost` (`allowedDevOrigins`). Senza `allowedDevOrigins: ['127.0.0.1']` in `next.config.ts` la pagina arriva dal server ma React non si idrata (menu, Dialog, Select e form non rispondono, i form fanno GET). Controllo rapido: `curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: same-origin" -H "Sec-Fetch-Mode: no-cors" http://127.0.0.1:4810/_next/static/chunks/<un chunk .js preso dall'HTML>` deve dare 200, non 403. Dopo una modifica a `next.config.ts` la preview va riavviata dall'infrastruttura.
 
 - Database del QA: `docker compose exec -T postgres psql -U sdi -d sdi_channel` (psql non è installato sull'host).
-- MAI inserire fatture, storico o notifiche direttamente nel DB con SQL: si saltano le regole di sequenza e audit e si producono falsi bug (issue #103, cancellata: QA3/9001 e QA3/9003 erano righe scritte a mano). Per avere fatture in un certo stato usa lo script qui sotto e il generatore di notifiche.
+- Per provare come un altro utente usare «Esci» dal menu utente (o una finestra separata), non cancellare i cookie a mano: si perdono le sessioni salvate delle altre corsie.
+- MAI inserire o modificare fatture, storico o notifiche direttamente nel DB con SQL: si saltano le regole di sequenza e audit e si producono falsi bug (issue #103, cancellata: QA3/9001 e QA3/9003 erano righe scritte a mano). Per avere fatture in un certo stato usa lo script qui sotto e il generatore di notifiche.
 
 ### Fattura Inviata o Consegnata di prova (script, autorizzato per tutte le corsie)
 Migrazioni richieste: 0009_received_summary.sql (riepilogo ricevute) e 0010_fattura_sostituita.sql (stato Sostituita), applicate da `npm run db:migrate`.
 ```
 npm run --silent qa:fattura-inviata -- --tenant alfa|beta --stato sent|delivered [--cessionario "qa2-Nome Srl"]
 ```
-Crea una fattura NUOVA con numero dal contatore reale, file firmato col certificato di test, storico coerente (draft, signed, sent; con delivered anche la notifica RC) e audit. Stampa JSON con id, numero, nome_file, sdi_identifier, stato. Rifiuta di girare con SDI_ENV=production. Autorizzato al QA (decisione triage it.13, issue #99): sono dati di sviluppo. L'opzione `--cessionario` per il prefisso della corsia è in lavorazione (work package it.13); finché manca, usare lo script com'è e annotare nel report numero e id delle fatture create.
+Crea una fattura NUOVA con numero dal contatore reale, file firmato col certificato di test, storico coerente (draft, signed, sent; con delivered anche la notifica RC) e audit. Stampa JSON con id, numero, nome_file, sdi_identifier, stato. Rifiuta di girare con SDI_ENV=production. Autorizzato al QA (decisione triage it.13, issue #99): sono dati di sviluppo. Usare sempre `--cessionario` con il prefisso della corsia e annotare nel report numero e id delle fatture create. Limite noto (issue #105, in correzione): lo script genera un `sdi_identifier` di 17 cifre, mentre lo schema delle notifiche accetta al massimo 12 cifre (la notifica dà 500 «totalDigits»). Finché #105 non è risolta non correggere a mano l'identificativo nel DB: segnalare il criterio come bloccato da #105.
 
 Percorsi di prova:
 - MC: `--stato sent`, poi notifica MC (atteso Mancata consegna).

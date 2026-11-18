@@ -248,7 +248,16 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                       <TableCell className="whitespace-nowrap">{formatDateTime(n.at)}</TableCell>
                       <TableCell>{n.type === "SE" ? "Scarto esito committente (SE)" : n.type}</TableCell>
                       <TableCell>
-                        {n.esito ? <Badge variant={n.esito === "EN01" ? "destructive" : "outline"}>{n.esito}</Badge> : "-"}
+                        {n.esito ? (
+                          <span className="flex flex-col items-start gap-1">
+                            <Badge variant={n.esito === "EN01" ? "destructive" : "outline"}>{n.esito}</Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {n.esito === "EN00" ? "Esito accettato" : n.esito === "EN01" ? "Esito rifiutato" : ""}
+                            </span>
+                          </span>
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell>{n.descrizione ?? "-"}</TableCell>
                     </TableRow>

@@ -48,7 +48,7 @@ export async function createQaInvoice(db: pg.Pool, opts: { tenant: QaTenant; sta
   );
   if ("errors" in res) throw new Error(`Creazione non riuscita: ${JSON.stringify(res.errors)}`);
 
-  const sdi = `99${Date.now()}${Math.floor(Math.random() * 90 + 10)}`;
+  const sdi = String(Date.now() % 1_000_000_000_000).padStart(12, "9"); // massimo 12 cifre (schema IdentificativoSdI)
   const inv = await db.query("select nome_file, numero, status from invoices where id = $1", [res.id]);
   const nomeFile = inv.rows[0].nome_file as string;
 

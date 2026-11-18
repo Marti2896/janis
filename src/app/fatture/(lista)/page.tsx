@@ -86,7 +86,7 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
           <TableHead>Numero</TableHead>
           <TableHead>Data</TableHead>
           {isAdmin && <TableHead>Account</TableHead>}
-          <TableHead>Cessionario</TableHead>
+          <TableHead>Cliente</TableHead>
           <TableHead className="text-right">Importo</TableHead>
           <TableHead>Stato</TableHead>
         </TableRow>

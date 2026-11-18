@@ -27,6 +27,9 @@ export default async function LoginPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <LoginForm next={next} uscito={Boolean(uscito)} />
+          <p className="text-sm text-muted-foreground">
+            Password dimenticata? Chiedi all&apos;amministratore del canale di reimpostarla.
+          </p>
         </CardContent>
       </Card>
     </main>

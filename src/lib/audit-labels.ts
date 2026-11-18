@@ -29,21 +29,24 @@ const EVENTS: Record<string, string> = {
   "received_invoice.stored": "Fattura ricevuta",
   "received_invoice.assigned": "Fattura ricevuta assegnata a un account",
   "received_invoice.rejected": "Fattura ricevuta rifiutata",
-  "notification.unknown_invoice": "Notifica SdI per una fattura sconosciuta",
-  "notification.incompatible_state": "Notifica SdI non applicabile allo stato della fattura",
-  "notification.rejected": "Notifica SdI rifiutata",
+  "notification.unknown_invoice": "Notifica per una fattura sconosciuta",
+  "notification.incompatible_state": "Notifica ignorata",
+  "notification.rejected": "Notifica rifiutata",
 };
 
 export function auditActionLabel(event: string, detail: Record<string, unknown>): string {
   if (event === "notification.applied") {
     const t = typeof detail.type === "string" ? detail.type : "";
-    return `Notifica SdI ricevuta: ${NOTIFICA[t] ?? t}`;
+    return `Notifica ricevuta: ${NOTIFICA[t] ?? t}`;
   }
-  if (event === "notification.unknown_invoice" || event === "notification.incompatible_state") {
+  if (event === "notification.incompatible_state") {
+    return "Notifica ignorata: arrivata dopo che la fattura aveva già un esito definitivo";
+  }
+  if (event === "notification.unknown_invoice") {
     const t = typeof detail.type === "string" ? detail.type : "";
     return `${EVENTS[event]}${t && NOTIFICA[t] ? ` (${NOTIFICA[t]})` : ""}`;
   }
-  return EVENTS[event] ?? "Altra attività";
+  return EVENTS[event] ?? "Attività del sistema";
 }
 
 const ERROR_REASON: Record<string, string> = {

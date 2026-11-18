@@ -35,7 +35,7 @@ export default async function InvoiceDetailPage({
     ["Numero", invoice.numero],
     ["Data", formatDate(invoice.data)],
     ["Cedente", invoice.cedente],
-    ["Cessionario", invoice.cessionario],
+    ["Cliente", invoice.cessionario],
     ["Importo", formatEuro(invoice.importoCents)],
   ];
   if (invoice.ambiente) fields.push(["Ambiente", invoice.ambiente]);
