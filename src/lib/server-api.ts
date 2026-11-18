@@ -5,7 +5,6 @@
  * corregge qui, in un solo punto.
  */
 import * as authModule from "@/server/auth";
-import * as invoiceRepoModule from "@/server/invoice-repo";
 import * as invoiceServiceModule from "@/server/invoice-service";
 import * as tenantsModule from "@/server/tenants";
 
@@ -32,11 +31,6 @@ export type AuthResult =
   | { ok: true; token: string; expiresAt: Date; user: SessionUser }
   | { ok: false; reason: "invalid" | "locked" };
 
-interface AuthApi {
-  authenticate(input: { email: string; password: string; ip: string | null }): Promise<AuthResult>;
-  getSessionUser(token: string): Promise<SessionUser | null>;
-  destroySession(token: string): Promise<void>;
-}
 
 export interface InvoiceRow {
   id: string;
@@ -69,11 +63,6 @@ export interface InvoiceFile {
   bytes: Uint8Array;
 }
 
-interface InvoiceReadApi {
-  listInvoices(scope: Scope, filters: { stato?: string; tenantId?: string }): Promise<InvoiceRow[]>;
-  getInvoiceDetail(scope: Scope, id: string): Promise<InvoiceDetail | null>;
-  getInvoiceFile(scope: Scope, id: string): Promise<InvoiceFile | null>;
-}
 
 export interface NewInvoiceInput {
   tenantId?: string;
@@ -90,30 +79,101 @@ export type CreateInvoiceResult =
   | { ok: true; invoiceId: string; queued: boolean }
   | { ok: false; error: string; path?: string };
 
-interface InvoiceServiceApi {
-  createAndSendInvoice(scope: Scope, input: NewInvoiceInput): Promise<CreateInvoiceResult>;
-}
-
 export interface TenantOption {
   id: string;
   denominazione: string;
 }
 
-interface TenantsApi {
-  listTenants(scope: Scope): Promise<TenantOption[]>;
+const toRow = (r: invoiceServiceModule.InvoiceRow): InvoiceRow => ({
+  id: r.id,
+  numero: r.numero,
+  data: r.data,
+  cessionario: r.cessionarioDenominazione ?? "",
+  importoCents: r.importoCents ?? 0,
+  status: r.status,
+  tenantName: r.tenantName,
+});
+
+const iso = (d: Date | string) => (d instanceof Date ? d.toISOString() : String(d));
+
+export async function authenticate(input: {
+  email: string;
+  password: string;
+  ip: string | null;
+}): Promise<AuthResult> {
+  const res = await authModule.authenticate(input.email, input.password, input.ip ?? "");
+  if (!res.ok) return res;
+  const user = await authModule.getSession(res.token);
+  if (!user) return { ok: false, reason: "invalid" };
+  return { ok: true, token: res.token, expiresAt: res.expiresAt, user: toSessionUser(user) };
 }
 
-const auth = authModule as unknown as AuthApi;
-const invoiceRepo = invoiceRepoModule as unknown as InvoiceReadApi;
-const invoiceService = invoiceServiceModule as unknown as InvoiceServiceApi;
-const tenants = tenantsModule as unknown as TenantsApi;
+function toSessionUser(u: authModule.SessionUser): SessionUser {
+  return { id: u.userId, email: u.email, role: u.role, tenantId: u.tenantId };
+}
 
-export const authenticate = (input: { email: string; password: string; ip: string | null }) =>
-  auth.authenticate(input);
-export const getSessionUser = (token: string) => auth.getSessionUser(token);
-export const destroySession = (token: string) => auth.destroySession(token);
-export const listInvoices = invoiceRepo.listInvoices.bind(invoiceRepo);
-export const getInvoiceDetail = invoiceRepo.getInvoiceDetail.bind(invoiceRepo);
-export const getInvoiceFile = invoiceRepo.getInvoiceFile.bind(invoiceRepo);
-export const createAndSendInvoice = invoiceService.createAndSendInvoice.bind(invoiceService);
-export const listTenants = tenants.listTenants.bind(tenants);
+export async function getSessionUser(token: string): Promise<SessionUser | null> {
+  const u = await authModule.getSession(token);
+  return u ? toSessionUser(u) : null;
+}
+
+export const destroySession = (token: string): Promise<void> => authModule.destroySession(token);
+
+export async function listInvoices(
+  scope: Scope,
+  filters: { stato?: string; tenantId?: string },
+): Promise<InvoiceRow[]> {
+  const rows = await invoiceServiceModule.listInvoices(scope, filters);
+  return rows.map(toRow);
+}
+
+export async function getInvoiceDetail(scope: Scope, id: string): Promise<InvoiceDetail | null> {
+  const d = await invoiceServiceModule.getInvoice(scope, id);
+  if (!d) return null;
+  return {
+    ...toRow(d),
+    cedente: d.cedenteDenominazione ?? "",
+    ambiente: d.ambiente ?? "",
+    sdiIdentifier: d.sdiIdentifier,
+    hasFile: d.hasFile,
+    events: d.events.map((e) => ({
+      at: iso(e.at),
+      kind: e.kind === "notification" ? ("notifica" as const) : ("stato" as const),
+      label: e.description,
+      outcome: e.esito,
+      error: e.errori?.length ? e.errori.map((x) => `${x.codice}: ${x.descrizione}`).join("; ") : null,
+    })),
+  };
+}
+
+export async function getInvoiceFile(scope: Scope, id: string): Promise<InvoiceFile | null> {
+  return invoiceServiceModule.getInvoiceFile(scope, id);
+}
+
+export async function createAndSendInvoice(
+  scope: Scope,
+  input: NewInvoiceInput,
+): Promise<CreateInvoiceResult> {
+  const res = await invoiceServiceModule.createAndSendInvoice(scope, {
+    tenantId: input.tenantId,
+    cessionarioDenominazione: input.cessionario.denominazione,
+    cessionarioPartitaIva: input.cessionario.partitaIva,
+    cessionarioCodiceFiscale: input.cessionario.codiceFiscale,
+    destinazione: input.destinazione,
+    tipoDocumento: input.tipoDocumento,
+    formato: input.formato,
+    data: input.data,
+    righe: input.righe as invoiceServiceModule.NewInvoiceInput["righe"],
+    idempotencyKey: input.idempotencyKey,
+  });
+  if ("errors" in res) {
+    const [path, error] = Object.entries(res.errors)[0] ?? ["", "Dati non validi"];
+    return { ok: false, error, path: path || undefined };
+  }
+  return { ok: true, invoiceId: res.id, queued: Boolean(res.queued) };
+}
+
+export async function listTenants(scope: Scope): Promise<TenantOption[]> {
+  const rows = await tenantsModule.listTenants(scope);
+  return rows.map((t) => ({ id: t.id, denominazione: t.denominazione }));
+}
