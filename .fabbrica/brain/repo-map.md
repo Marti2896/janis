@@ -1,11 +1,11 @@
 # Mappa del repository
-<!-- fingerprint: bba2249:142 -->
+<!-- fingerprint: 804bdfb:142 -->
 _Generata automaticamente dalla fabbrica: fotografia di stack, struttura e comandi del progetto._
 _Gli agenti la trovano già nel contesto: NON rianalizzare il progetto da zero e non riscrivere questo file._
 _Per i dettagli apri i file specifici. Le note di architettura scritte a mano restano in fondo._
 
 ## sdi-channel
-Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/interscambio-auth-dashboard` · ultimo commit: bba2249 2026-11-18 fabbrica(run #406, it.3): Nome del progetto: "Interscambio". Aggiorna il nome visibile nell
+Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/interscambio-auth-dashboard` · ultimo commit: 804bdfb 2026-11-18 fabbrica(run #406, it.6): Nome del progetto: "Interscambio". Aggiorna il nome visibile nell
 File (esclusi build e dipendenze): 142
 
 **Linguaggi**: TypeScript (66) · TypeScript (React) (52) · SQL (4) · Markdown (3) · JavaScript (3) · CSS (1)

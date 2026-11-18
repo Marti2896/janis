@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   serverExternalPackages: ["xmllint-wasm"],
   experimental: { authInterrupts: true },
+  // Il log del browser nel terminale scrive in .next/dev/logs e, con la scansione Tailwind, innescava un ciclo di ricompilazioni.
+  logging: { browserToTerminal: false },
   async rewrites() {
     return [{ source: "/api/v1/:path*", destination: `http://127.0.0.1:${apiPort}/api/v1/:path*` }];
   },
