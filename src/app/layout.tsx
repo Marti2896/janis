@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
-        <AppShell user={user ? { email: user.email, role: user.role } : null}>{children}</AppShell>
+        <AppShell user={user ? { email: user.email, role: user.role, mustChangePassword: user.mustChangePassword } : null}>{children}</AppShell>
       </body>
     </html>
   );

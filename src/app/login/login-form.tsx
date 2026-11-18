@@ -21,8 +21,9 @@ export function LoginForm({ next }: { next: string }) {
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") ?? "").trim();
     const errs: { email?: string; password?: string } = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Inserisci un indirizzo email valido";
-    if (!String(fd.get("password") ?? "")) errs.password = "Inserisci la password";
+    if (!email) errs.email = "Inserisci l'email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Inserisci un'email valida.";
+    if (!String(fd.get("password") ?? "")) errs.password = "Inserisci la password.";
     setFieldErrors(errs);
     if (errs.email || errs.password) e.preventDefault();
   }
@@ -45,9 +46,13 @@ export function LoginForm({ next }: { next: string }) {
           autoComplete="username"
           defaultValue={state.email}
           aria-invalid={state.error || fieldErrors.email ? true : undefined}
-          required
+          aria-describedby={fieldErrors.email ? "email-error" : undefined}
         />
-        {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
+        {fieldErrors.email && (
+          <p id="email-error" role="alert" className="text-sm text-destructive">
+            {fieldErrors.email}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
@@ -57,9 +62,13 @@ export function LoginForm({ next }: { next: string }) {
           type="password"
           autoComplete="current-password"
           aria-invalid={state.error || fieldErrors.password ? true : undefined}
-          required
+          aria-describedby={fieldErrors.password ? "password-error" : undefined}
         />
-        {fieldErrors.password && <p className="text-sm text-destructive">{fieldErrors.password}</p>}
+        {fieldErrors.password && (
+          <p id="password-error" role="alert" className="text-sm text-destructive">
+            {fieldErrors.password}
+          </p>
+        )}
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? <Loader2 className="animate-spin" /> : <LogIn />}

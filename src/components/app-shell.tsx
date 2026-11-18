@@ -71,13 +71,13 @@ export function AppShell({
   user,
   children,
 }: {
-  user: { email: string; role: "admin" | "cliente" } | null;
+  user: { email: string; role: "admin" | "cliente"; mustChangePassword?: boolean } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   if (!user) return <>{children}</>;
 
-  const items = NAV.filter((i) => !i.admin || user.role === "admin");
+  const items = user.mustChangePassword ? [] : NAV.filter((i) => !i.admin || user.role === "admin");
   const roleLabel = user.role === "admin" ? "Amministratore" : "Cliente";
 
   return (

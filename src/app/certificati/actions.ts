@@ -28,8 +28,8 @@ export async function uploadCertificateAction(
   } catch (err) {
     console.error("uploadCertificateAction", err);
     const msg = err instanceof Error ? err.message : "";
-    if (/SECRETS_MASTER_KEY/.test(msg)) {
-      return { ok: false, error: "Configurazione mancante: SECRETS_MASTER_KEY non impostata sul server." };
+    if (/SECRETS_MASTER_KEY|ECONNREFUSED|relation .* does not exist/.test(msg)) {
+      return { ok: false, error: "Configurazione del server incompleta. Contatta l'amministratore." };
     }
     return { ok: false, error: "Password errata o file non valido." };
   }

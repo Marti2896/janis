@@ -59,8 +59,7 @@ export default async function AuditPage({
       u.set("pagina", String(p));
       return `/audit?${u.toString()}`;
     };
-    const tenantName = (id: string | null) =>
-      id ? (tenants.find((t) => t.id === id)?.denominazione ?? id) : "Sistema";
+    const tenantName = (id: string) => tenants.find((t) => t.id === id)?.denominazione ?? "Account";
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <h1 className="text-2xl font-semibold">Audit</h1>
@@ -115,7 +114,11 @@ export default async function AuditPage({
                       <TableCell>
                         {new Date(r.createdAt).toLocaleString("it-IT")}
                       </TableCell>
-                      <TableCell>{tenantName(r.tenantId)}</TableCell>
+                      <TableCell>
+                        {r.tenantName ?? (r.tenantId ? tenantName(r.tenantId) : null) ?? (
+                          <span className="text-muted-foreground">Sistema</span>
+                        )}
+                      </TableCell>
                       <TableCell>{r.event}</TableCell>
                       <TableCell>{r.entity ?? "-"}</TableCell>
                       <TableCell>{r.outcome ?? "-"}</TableCell>
