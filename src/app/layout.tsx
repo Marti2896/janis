@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
+import { AppShell } from "@/components/app-shell";
+import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,17 +15,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SDI Channel",
-  description: "Canale telematico SDICoop per la fatturazione elettronica",
+  title: { default: "Interscambio", template: "%s - Interscambio" },
+  description: "Interscambio: canale telematico SDICoop per la fatturazione elettronica",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+const THEME_SCRIPT = `try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark")}}catch(e){}`;
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await getCurrentUser();
   return (
     <html
       lang="it"
+      suppressHydrationWarning
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col font-sans">
+        <AppShell user={user ? { email: user.email, role: user.role } : null}>{children}</AppShell>
+      </body>
     </html>
   );
 }
