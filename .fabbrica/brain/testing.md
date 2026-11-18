@@ -141,3 +141,14 @@ Chiavi API lasciate dalla corsia 6: qa6-alfa-copia e qa6-alfa-file (attive, Alfa
 - Nota: il selettore Account di /audit e /fatture elenca anche molti tenant creati dai test automatici (Lock, Passive, T, Test...). Pulizia in corso (#117); intanto ignorarli.
 - Lo script `qa:fattura-inviata` accetta anche `--cessionario "<nome>"` per dare un nome riconoscibile al cliente della fattura di prova.
 - Pagina 403 in sviluppo (#111): l'avviso di console «negative time stamp» del Performance measure è un difetto noto del dev server di Next, non dell'app; conta solo l'errore «script tag».
+
+
+## Run #406 · qa · Accessi QA corsia 1 - giro mirato (run 406)
+
+## Accessi QA corsia 1 (run 406, giro mirato)
+
+- qa1-c1.attivo@interscambio.test: riattivato dall'area admin (era disattivato). Password Qa1-attivo-nota-2026. Ha un blocco residuo da tentativi sbagliati.
+- qa1-c1.disattivato@interscambio.test: disattivato, serve per il messaggio generico.
+- qa1-c1.nuovo@interscambio.test (tenant qa1-c1 Tenant Nuovo, P.IVA 55500000033, cliente): password attuale Qa1-nuovo-nota-2026 (cambiata dalla temporanea). Bloccato dal test di lockout fino a 15 minuti dopo le 13:44.
+
+Nessuna nuova variabile d'ambiente.
