@@ -4,6 +4,43 @@ Le funzionalità del prodotto raccontate come percorsi dell'utente. I diagrammi 
 
 
 
+## Accedere alla piattaforma con il proprio account (accesso-login-multi-tenant)
+Login con email e password; ogni utente entra nella propria area in base al ruolo e al tenant.
+Attori: cliente, admin
+- [inizio] Apre l'app · utente
+  Senza sessione viene reindirizzato al login.
+- [azione] Inserisce email e password · utente
+  Form con Card, Input email e password, Button Accedi.
+- [sistema] Verifica credenziali e stato account · sistema
+  Hash argon2id o bcrypt; email case-insensitive.
+- [decisione] Credenziali valide e account attivo? · sistema
+  Stesso messaggio generico in caso di errore.
+- [uscita] Messaggio generico di errore · sistema
+  Email o password non corretti. Dopo 5 errori in 15 minuti scatta il blocco.
+- [decisione] Ruolo admin? · sistema
+  Il ruolo determina il menu e le pagine accessibili.
+- [sistema] Apre la dashboard del cliente · sistema
+  Cookie interscambio_session httpOnly, redirect a /fatture con soli dati del tenant.
+- [sistema] Apre l'area admin · sistema
+  Vede tutti i tenant, certificati e canale.
+- [fine] Area autenticata pronta · utente
+  Logout cancella il cookie e invalida la sessione.
+- Apre l'app → Inserisce email e password (apre login)
+- Inserisce email e password → Verifica credenziali e stato account (invia)
+- Verifica credenziali e stato account → Credenziali valide e account attivo? (verifica)
+- Credenziali valide e account attivo? ↯ Messaggio generico di errore (no)
+- Credenziali valide e account attivo? → Ruolo admin? (sì)
+- Ruolo admin? ⇢ Apre la dashboard del cliente (cliente)
+- Ruolo admin? ⇢ Apre l'area admin (admin)
+- Apre la dashboard del cliente → Area autenticata pronta (completato)
+- Apre l'area admin → Area autenticata pronta (completato)
+
+Fatto quando:
+- Senza sessione ogni pagina porta a /login
+- Credenziali errate mostrano un messaggio generico
+- Un cliente vede solo i dati del proprio tenant
+- Dopo il logout la sessione non è più valida
+
 ## Emettere e inviare una fattura al Sistema di Interscambio (emissione-fattura-sdicoop)
 Dal modello della fattura al file FatturaPA validato, firmato in CAdES-BES e inviato al demo SdI senza duplicati.
 Attori: chiamante interno, SdI demo
@@ -125,3 +162,80 @@ Fatto quando:
 - Una notifica ripetuta non duplica né lo storico né la riga di notifica
 - Operazioni non supportate ricevono un SOAP Fault e un audit
 - UPDATE e DELETE sulle tabelle append-only sono bloccati
+
+## Ricevere una fattura passiva e renderla disponibile al destinatario (ricezione-fatture-passive)
+SdI consegna una fattura; il sistema conserva il file originale e la assegna all'account giusto.
+Attori: SdI demo, cliente, admin
+- [inizio] SdI consegna la fattura · SdI demo
+  RiceviFatture con file e metadati.
+- [sistema] Legge l'XML o estrae il file dal P7M · sistema
+  Estrae cedente e cessionario per instradare.
+- [decisione] Il file è valido? · sistema
+  Controllo di struttura e firma.
+- [uscita] Rifiuto con motivo · sistema
+  Nessun record creato.
+- [sistema] Salva file originale e sha256 · sistema
+  Storico append-only e audit.
+- [decisione] IdentificativoSdI già noto? · sistema
+  Vincolo unique su sdi_identifier.
+- [uscita] Duplicato ignorato · sistema
+  Risposta positiva senza nuovo record.
+- [decisione] Il cessionario corrisponde a un account? · sistema
+  Partita IVA, poi codice fiscale.
+- [sistema] Assegna all'account · sistema
+  Visibile nelle Fatture ricevute del cliente.
+- [sistema] Lascia non assegnata · sistema
+  Visibile solo all'admin, che può assegnarla.
+- [fine] Il destinatario la scarica · cliente
+  Download del file originale byte per byte.
+- SdI consegna la fattura → Legge l'XML o estrae il file dal P7M (ricezione)
+- Legge l'XML o estrae il file dal P7M → Il file è valido? (verifica)
+- Il file è valido? ↯ Rifiuto con motivo (no)
+- Il file è valido? → Salva file originale e sha256 (sì)
+- Salva file originale e sha256 → IdentificativoSdI già noto? (salvataggio)
+- IdentificativoSdI già noto? ⇢ Duplicato ignorato (sì)
+- IdentificativoSdI già noto? → Il cessionario corrisponde a un account? (no)
+- Il cessionario corrisponde a un account? → Assegna all'account (sì)
+- Il cessionario corrisponde a un account? ⇢ Lascia non assegnata (no)
+- Assegna all'account → Il destinatario la scarica (completato)
+- Lascia non assegnata ⇢ Il destinatario la scarica (dopo assegnazione)
+
+Fatto quando:
+- Il download restituisce un file identico per sha256
+- Un duplicato con lo stesso IdentificativoSdI non crea un nuovo record
+- Una fattura senza destinatario noto resta visibile solo all'admin
+
+## Usare l'API con una chiave per account (api-esterna-chiavi)
+Il cliente genera una chiave; un sistema esterno legge e invia fatture solo per il proprio tenant.
+Attori: cliente, sistema esterno
+- [inizio] Il cliente crea una API key · cliente
+  Dalla sezione API, con un nome.
+- [sistema] Mostra la chiave una volta e salva l'hash · sistema
+  Formato isk_<prefisso>_<segreto>.
+- [azione] Il CRM chiama l'API con X-API-Key · sistema esterno
+  Ad esempio GET /api/v1/invoices.
+- [decisione] Chiave presente e attiva? · sistema
+  Non revocata.
+- [uscita] 401 non autorizzato · sistema
+  Chiave mancante o revocata.
+- [sistema] Applica lo scope del tenant della chiave · sistema
+  Ogni query passa dal repository con Scope.
+- [decisione] La risorsa appartiene al tenant? · sistema
+  Altrimenti non viene nemmeno letta.
+- [uscita] 404 non trovato · sistema
+  Stessa risposta di una risorsa inesistente.
+- [fine] Risposta JSON e audit della chiamata · sistema esterno
+  Le scritture creano un evento di audit.
+- Il cliente crea una API key → Mostra la chiave una volta e salva l'hash (crea)
+- Mostra la chiave una volta e salva l'hash → Il CRM chiama l'API con X-API-Key (usa la chiave)
+- Il CRM chiama l'API con X-API-Key → Chiave presente e attiva? (verifica)
+- Chiave presente e attiva? ↯ 401 non autorizzato (no)
+- Chiave presente e attiva? → Applica lo scope del tenant della chiave (sì)
+- Applica lo scope del tenant della chiave → La risorsa appartiene al tenant? (verifica)
+- La risorsa appartiene al tenant? ↯ 404 non trovato (no)
+- La risorsa appartiene al tenant? → Risposta JSON e audit della chiamata (sì)
+
+Fatto quando:
+- La chiave è mostrata una sola volta
+- Una chiave revocata dà 401
+- Una risorsa di un altro tenant dà 404

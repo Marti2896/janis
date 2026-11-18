@@ -8,13 +8,22 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 - Servizi: `docker compose up -d` avvia Postgres 17 (localhost:54320, db `sdi_channel`, utente `sdi` / `sdi_dev_only`, solo sviluppo) e Redis 7 (localhost:63790).
 - `.env`: copia di `.env.example` (lo fa `npm run dev` se manca). `SDI_ENV=demo` sempre: la produzione SdI non si tocca.
 - Migrazioni: `npm run db:migrate` (applica `db/migrations/*.sql` in ordine, tracciate in `schema_migrations`). La 0002 crea lo schema SDICoop (ADR 0004).
-- Dev server: `npm run dev` avvia web (Next, porta 3000) e API (Fastify, porta 4000). Gli agenti NON lo avviano a mano: la preview (http://127.0.0.1:4000, cioè l'API) è dell'infrastruttura e gira con `SDI_ENV=demo`. Non riconfigurarla.
-- URL: dashboard http://localhost:3000 (solo scheletro), API http://localhost:4000.
+- Dev server: `npm run dev` avvia web (Next) e API (Fastify) sulle porte di `.env`: `WEB_PORT=4810`, `API_PORT=4811` (i default nel codice, 3000/4000, valgono solo senza `.env`). Gli agenti NON lo avviano a mano: la preview (http://127.0.0.1:4810, la web app) è dell'infrastruttura e gira con `SDI_ENV=demo`. Non riconfigurarla.
+- URL: web http://127.0.0.1:4810, API http://127.0.0.1:4811 (`/health`). Negli esempi curl più sotto sostituisci 4000 con 4811.
 
 ## Autenticazione
+### Oggi (prima della run #406)
 - Non esiste autenticazione: nessun utente, nessuna API key, nessun login. Dashboard e API sono aperte in locale.
-- API key per tenant e login operatore arriveranno con la roadmap, non nella run #405.
-- L'endpoint di ricezione notifiche SdI in produzione sarà protetto da mutua TLS; in locale si chiama senza TLS.
+- L'endpoint di ricezione notifiche SdI in produzione sarà protetto da mutua TLS; in locale si chiama senza TLS e resta senza login anche dopo la run #406 (lo chiama SdI, non un utente).
+
+### Dalla run #406 (in costruzione: i builder aggiornano questa sezione con un artefatto access)
+- Login web: pagina `/login` (email + password, hash argon2id o bcrypt), sessione con cookie httpOnly, SameSite=Lax, Secure in produzione; logout da header.
+- Ruoli: `admin` (tutti gli account, certificati, configurazione canale, creazione account) e `cliente` (solo i dati del proprio tenant).
+- Utenti di test creati da `npm run db:seed` (idempotente), SOLO sviluppo:
+  - `admin@interscambio.test` / `Admin-dev-2026!` (ruolo admin)
+  - `cliente.alfa@interscambio.test` / `Cliente-dev-2026!` (cliente, tenant Alfa Srl, P.IVA 01234567890, quello demo esistente)
+  - `cliente.beta@interscambio.test` / `Cliente-dev-2026!` (cliente, tenant Beta Spa, P.IVA 09876543210) per verificare l'isolamento: Beta non deve mai vedere fatture, notifiche o audit di Alfa.
+- API REST esterna: header `X-API-Key: <chiave>`; chiavi per tenant, salvate solo come hash. Il seed stampa a console una chiave di sviluppo per Alfa e una per Beta (valori deterministici documentati dal builder). Documentazione OpenAPI su `GET /api/v1/openapi.json` (porta 4811) e pagina docs.
 
 ## Dati di seed
 - Comando: `npm run db:seed` (equivale a `node --env-file-if-exists=.env scripts/seed.mjs`), idempotente: rieseguirlo non duplica.
@@ -51,3 +60,9 @@ Non si verifica sulla preview condivisa (gira in demo e non va riconfigurata) e 
 
 ## QA della run #405
 - Nessuna UI: niente browser né screenshot. Il QA usa Vitest, curl sull'API della preview e query sul DB.
+
+## QA della run #406 (UI completa, ADR 0006)
+- Prima: `npm run db:migrate && npm run db:seed` (nuove migrazioni per utenti, sessioni, API key, certificati, impostazioni canale, fatture ricevute, nuovi stati).
+- Browser sulla preview http://127.0.0.1:4810: login con i tre utenti di test sopra, verificare che senza sessione ogni pagina reindirizzi a `/login`.
+- Isolamento: da Beta aprire l'URL di dettaglio di una fattura di Alfa deve dare «non trovato»; stessa prova via API con la chiave di Beta.
+- Notifiche MC/NE/DT e fatture passive si simulano con il generatore `sdi:notifica-demo` (esteso dai builder) e curl su porta 4811.

@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "slug": "api-esterna-chiavi",
+  "title": "Usare l'API con una chiave per account",
+  "summary": "Il cliente genera una chiave; un sistema esterno legge e invia fatture solo per il proprio tenant.",
+  "actors": [
+    "cliente",
+    "sistema esterno"
+  ],
+  "acceptance": [
+    "La chiave è mostrata una sola volta",
+    "Una chiave revocata dà 401",
+    "Una risorsa di un altro tenant dà 404"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "Il cliente crea una API key",
+      "detail": "Dalla sezione API, con un nome.",
+      "actor": "cliente",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "sistema",
+      "title": "Mostra la chiave una volta e salva l'hash",
+      "detail": "Formato isk_<prefisso>_<segreto>.",
+      "actor": "sistema",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "azione",
+      "title": "Il CRM chiama l'API con X-API-Key",
+      "detail": "Ad esempio GET /api/v1/invoices.",
+      "actor": "sistema esterno",
+      "media": [],
+      "x": 780,
+      "y": 197
+    },
+    {
+      "id": "n4",
+      "kind": "decisione",
+      "title": "Chiave presente e attiva?",
+      "detail": "Non revocata.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 160
+    },
+    {
+      "id": "n5",
+      "kind": "uscita",
+      "title": "401 non autorizzato",
+      "detail": "Chiave mancante o revocata.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 505
+    },
+    {
+      "id": "n6",
+      "kind": "sistema",
+      "title": "Applica lo scope del tenant della chiave",
+      "detail": "Ogni query passa dal repository con Scope.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 197
+    },
+    {
+      "id": "n7",
+      "kind": "decisione",
+      "title": "La risorsa appartiene al tenant?",
+      "detail": "Altrimenti non viene nemmeno letta.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 160
+    },
+    {
+      "id": "n8",
+      "kind": "uscita",
+      "title": "404 non trovato",
+      "detail": "Stessa risposta di una risorsa inesistente.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 505
+    },
+    {
+      "id": "n9",
+      "kind": "fine",
+      "title": "Risposta JSON e audit della chiamata",
+      "detail": "Le scritture creano un evento di audit.",
+      "actor": "sistema esterno",
+      "media": [],
+      "x": 2180,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "crea",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "usa la chiave",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "verifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e4",
+      "from": "n4",
+      "to": "n5",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e5",
+      "from": "n4",
+      "to": "n6",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n6",
+      "to": "n7",
+      "label": "verifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e7",
+      "from": "n7",
+      "to": "n8",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e8",
+      "from": "n7",
+      "to": "n9",
+      "label": "sì",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-18T07:50:29.355Z",
+  "updated_at": "2026-11-18T07:50:29.355Z",
+  "updated_by": "run #406 · spec",
+  "layout_version": 4
+}

@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "slug": "ricezione-fatture-passive",
+  "title": "Ricevere una fattura passiva e renderla disponibile al destinatario",
+  "summary": "SdI consegna una fattura; il sistema conserva il file originale e la assegna all'account giusto.",
+  "actors": [
+    "SdI demo",
+    "cliente",
+    "admin"
+  ],
+  "acceptance": [
+    "Il download restituisce un file identico per sha256",
+    "Un duplicato con lo stesso IdentificativoSdI non crea un nuovo record",
+    "Una fattura senza destinatario noto resta visibile solo all'admin"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "SdI consegna la fattura",
+      "detail": "RiceviFatture con file e metadati.",
+      "actor": "SdI demo",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "sistema",
+      "title": "Legge l'XML o estrae il file dal P7M",
+      "detail": "Estrae cedente e cessionario per instradare.",
+      "actor": "sistema",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "decisione",
+      "title": "Il file è valido?",
+      "detail": "Controllo di struttura e firma.",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 160
+    },
+    {
+      "id": "n4",
+      "kind": "uscita",
+      "title": "Rifiuto con motivo",
+      "detail": "Nessun record creato.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 524
+    },
+    {
+      "id": "n5",
+      "kind": "sistema",
+      "title": "Salva file originale e sha256",
+      "detail": "Storico append-only e audit.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 197
+    },
+    {
+      "id": "n6",
+      "kind": "decisione",
+      "title": "IdentificativoSdI già noto?",
+      "detail": "Vincolo unique su sdi_identifier.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 160
+    },
+    {
+      "id": "n7",
+      "kind": "uscita",
+      "title": "Duplicato ignorato",
+      "detail": "Risposta positiva senza nuovo record.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 524
+    },
+    {
+      "id": "n8",
+      "kind": "decisione",
+      "title": "Il cessionario corrisponde a un account?",
+      "detail": "Partita IVA, poi codice fiscale.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 160
+    },
+    {
+      "id": "n9",
+      "kind": "sistema",
+      "title": "Assegna all'account",
+      "detail": "Visibile nelle Fatture ricevute del cliente.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 197
+    },
+    {
+      "id": "n10",
+      "kind": "sistema",
+      "title": "Lascia non assegnata",
+      "detail": "Visibile solo all'admin, che può assegnarla.",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 505
+    },
+    {
+      "id": "n11",
+      "kind": "fine",
+      "title": "Il destinatario la scarica",
+      "detail": "Download del file originale byte per byte.",
+      "actor": "cliente",
+      "media": [],
+      "x": 2530,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "ricezione",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "verifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e4",
+      "from": "n3",
+      "to": "n5",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e5",
+      "from": "n5",
+      "to": "n6",
+      "label": "salvataggio",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n6",
+      "to": "n7",
+      "label": "sì",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n8",
+      "label": "no",
+      "kind": "ok"
+    },
+    {
+      "id": "e8",
+      "from": "n8",
+      "to": "n9",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e9",
+      "from": "n8",
+      "to": "n10",
+      "label": "no",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e10",
+      "from": "n9",
+      "to": "n11",
+      "label": "completato",
+      "kind": "ok"
+    },
+    {
+      "id": "e11",
+      "from": "n10",
+      "to": "n11",
+      "label": "dopo assegnazione",
+      "kind": "alternativo"
+    }
+  ],
+  "created_at": "2026-11-18T07:50:29.353Z",
+  "updated_at": "2026-11-18T07:50:29.353Z",
+  "updated_by": "run #406 · spec",
+  "layout_version": 4
+}

@@ -1,11 +1,11 @@
 # Mappa del repository
-<!-- fingerprint: b63e6e3:56 -->
+<!-- fingerprint: 9effc0f:56 -->
 _Generata automaticamente dalla fabbrica: fotografia di stack, struttura e comandi del progetto._
 _Gli agenti la trovano già nel contesto: NON rianalizzare il progetto da zero e non riscrivere questo file._
 _Per i dettagli apri i file specifici. Le note di architettura scritte a mano restano in fondo._
 
 ## sdi-channel
-Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/sdicoop-core-modules` · ultimo commit: b63e6e3 2026-11-17 fabbrica(run #405, it.2): Avvia lo sviluppo reale del canale SDICoop (invio/ricezione fattu
+Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `main` · ultimo commit: 9effc0f 2026-11-17 Merge feat/sdicoop-core-modules: Avvia lo sviluppo reale del canale SDICoop (invio/ricezion
 File (esclusi build e dipendenze): 56
 
 **Linguaggi**: TypeScript (28) · TypeScript (React) (5) · JavaScript (4) · Markdown (3) · SQL (2) · CSS (1)
