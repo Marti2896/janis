@@ -376,6 +376,10 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
         <CardContent className="flex flex-col gap-6">
           {rows.map((row, i) => (
             <div key={row.id} className="grid gap-4 border-b pb-6 last:border-b-0 last:pb-0 sm:grid-cols-6">
+              <p className="text-sm font-medium text-muted-foreground tabular-nums sm:col-span-6">
+                <span aria-hidden="true"># </span>
+                <span aria-label={`Riga ${i + 1}`}>{i + 1}</span>
+              </p>
               <div className="flex flex-col gap-2 sm:col-span-6">
                 <Label htmlFor={`desc-${row.id}`}>Descrizione</Label>
                 <Input id={`desc-${row.id}`} name={`righe.${i}.descrizione`} defaultValue={row.descrizione} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
