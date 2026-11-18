@@ -1,7 +1,7 @@
+import { forbidden } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { listCertificates } from "@/server/certificates";
 import { CertificateBadge } from "@/components/certificate-badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -16,18 +16,7 @@ import { UploadDialog } from "./upload-dialog";
 
 export default async function CertificatiPage() {
   const session = await requireSession();
-  if (session.user.role !== "admin") {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Accesso negato</AlertTitle>
-          <AlertDescription>
-            Questa pagina e riservata agli amministratori.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
+  if (session.user.role !== "admin") forbidden();
     const certs = await listCertificates(session.scope);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">

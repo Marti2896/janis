@@ -416,7 +416,16 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
         [tenant.id, a],
       );
     const numeroProg = (await bump(anno)).rows[0].ultimo as number;
-    const invioProg = (await bump(0)).rows[0].ultimo as number;
+    // Il NomeFile e unico: salta i progressivi di invio gia usati dal tenant (es. fatture importate).
+    let invioProg = (await bump(0)).rows[0].ultimo as number;
+    for (let i = 0; i < 1000; i++) {
+      const taken = await client.query(
+        "select 1 from invoices where tenant_id = $1 and nome_file like $2 limit 1",
+        [tenant.id, `%\\_${invioProg.toString(36).toUpperCase().padStart(5, "0")}.xml.p7m`],
+      );
+      if (!taken.rowCount) break;
+      invioProg = (await bump(0)).rows[0].ultimo as number;
+    }
     const numero = `${numeroProg}/${anno}`;
     const progressivo = invioProg.toString(36).toUpperCase().padStart(5, "0");
 
@@ -479,6 +488,9 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
     await client.query("commit");
   } catch (err) {
     await client.query("rollback").catch(() => {});
+    if ((err as { code?: string }).code === "23505") {
+      return { errors: { _form: "Conflitto su un identificativo gia usato: riprova." }, conflict: true };
+    }
     throw err;
   } finally {
     client.release();

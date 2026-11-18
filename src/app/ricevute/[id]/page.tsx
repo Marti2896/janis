@@ -43,7 +43,7 @@ export default async function RicevutaDettaglioPage({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Fattura ricevuta</CardTitle>
-          <Badge variant="secondary">{r.stato}</Badge>
+          <Badge variant="secondary">{r.stato === "received" ? "Ricevuta" : r.stato === "unassigned" ? "Non assegnata" : r.stato}</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
           <dl className="grid gap-3 sm:grid-cols-2">

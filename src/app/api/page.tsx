@@ -38,7 +38,7 @@ export default async function ApiPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           Usa una chiave nell&apos;header X-API-Key. Documentazione in{" "}
-          <a className="underline" href="/api/v1/openapi.json">
+          <a className="underline" href="/api/docs">
             OpenAPI
           </a>
           .

@@ -10,8 +10,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatDate, formatEuro } from "@/lib/format";
 import { listInvoices, listTenants, type Scope } from "@/lib/server-api";
 import { requireSession } from "@/lib/session";
-import { InvoiceFilters } from "./invoice-filters";
-import { InvoiceRowLink } from "./invoice-row-link";
+import { InvoiceFilters } from "../invoice-filters";
+import { InvoiceRowLink } from "../invoice-row-link";
 
 export const metadata: Metadata = { title: "Fatture emesse" };
 

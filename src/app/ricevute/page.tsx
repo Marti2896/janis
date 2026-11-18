@@ -23,6 +23,8 @@ const fmtMoney = (v: number | null) =>
     ? "-"
     : (v / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
 
+const receivedLabel = (s: string) => (s === "received" ? "Ricevuta" : s === "unassigned" ? "Non assegnata" : s);
+
 export default async function RicevutePage() {
   const session = await requireSession();
   const isAdmin = session.user.role === "admin";
@@ -112,7 +114,7 @@ export default async function RicevutePage() {
                       <TableCell>{r.numero ?? "-"}</TableCell>
                       <TableCell>{fmtMoney(r.importoCents)}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{r.stato}</Badge>
+                        <Badge variant="secondary">{receivedLabel(r.stato)}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}

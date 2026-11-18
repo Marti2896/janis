@@ -1,7 +1,9 @@
+import { forbidden } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { listTenants } from "@/server/tenants";
 import { listUsers } from "@/server/users";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { listApiKeys } from "@/server/api-keys";
+import { RevokeKeyDialog } from "@/app/api/keys-client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,19 +19,8 @@ import { NewAccountDialog, UserActions } from "./account-client";
 
 export default async function AccountPage() {
   const session = await requireSession();
-  if (session.user.role !== "admin") {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Accesso negato</AlertTitle>
-          <AlertDescription>
-            Questa pagina e riservata agli amministratori.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
-    const [tenants, users] = await Promise.all([listTenants(session.scope), listUsers(session.scope)]);
+  if (session.user.role !== "admin") forbidden();
+    const [tenants, users, keys] = await Promise.all([listTenants(session.scope), listUsers(session.scope), listApiKeys(session.scope)]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <div className="flex items-center justify-between gap-4">
@@ -85,6 +76,41 @@ export default async function AccountPage() {
             </Card>
           );
         })}
+        <Card>
+          <CardHeader>
+            <CardTitle>Chiavi API di tutti gli account</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            {keys.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">Nessuna chiave API.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Prefisso</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {keys.map((k) => (
+                    <TableRow key={k.id}>
+                      <TableCell>{k.tenantName ?? "-"}</TableCell>
+                      <TableCell>{k.name}</TableCell>
+                      <TableCell className="font-mono">{k.prefix}</TableCell>
+                      <TableCell>
+                        <Badge variant={k.revoked ? "destructive" : "secondary"}>{k.revoked ? "Revocata" : "Attiva"}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{!k.revoked && <RevokeKeyDialog id={k.id} name={k.name} />}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </main>
     );
 }
