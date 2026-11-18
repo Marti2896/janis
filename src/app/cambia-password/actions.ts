@@ -19,7 +19,7 @@ export async function changePasswordAction(_prev: ChangeState, formData: FormDat
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   try {
     const res = await changeOwnPassword(user.id, current, next, token);
-    if (!res.ok) return { error: "La password attuale non e corretta." };
+    if (!res.ok) return { error: "La password attuale non è corretta." };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Password non valida." };
   }

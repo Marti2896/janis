@@ -95,6 +95,8 @@ export type ListInvoicesFilter = {
   /** Stato esatto, oppure "queued" per il gruppo In coda (draft, signed, sending, send_unknown). */
   stato?: string | null;
   tenantId?: string | null;
+  /** Ricerca libera su numero e denominazione del cessionario. */
+  q?: string | null;
   limit?: number;
   offset?: number;
 };
@@ -115,15 +117,23 @@ export async function listInvoices(scope: Scope, filter: ListInvoicesFilter = {}
   if (filter.stato === "queued") {
     params.push([...QUEUED_STATUSES]);
     where.push(`i.status = any($${params.length})`);
+  } else if (filter.stato === "errors") {
+    // Gruppo «errori»: stati correnti di fallimento (stesso insieme dei contatori di Stato canale).
+    where.push(`i.status in ('send_error', 'rejected', 'not_delivered')`);
   } else if (filter.stato) {
     params.push(filter.stato);
     where.push(`i.status = $${params.length}`);
+  }
+  const q = filter.q?.trim();
+  if (q) {
+    params.push(`%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    where.push(`(i.numero ilike $${params.length} or i.cessionario_denominazione ilike $${params.length})`);
   }
   params.push(Math.min(filter.limit ?? 100, 500), filter.offset ?? 0);
   const r = await db.query(
     `select ${COLS} from invoices i join tenants t on t.id = i.tenant_id
       ${where.length ? "where " + where.join(" and ") : ""}
-      order by i.created_at desc, i.id limit $${params.length - 1} offset $${params.length}`,
+      order by i.data desc, i.anno desc nulls last, i.progressivo desc nulls last, i.created_at desc, i.id limit $${params.length - 1} offset $${params.length}`,
     params,
   );
   return r.rows.map(toRow);
@@ -211,7 +221,9 @@ export type NewInvoiceInput = {
   formato?: "FPR12" | "FPA12";
   /** YYYY-MM-DD */
   data: string;
-  righe: { descrizione: string; quantita: number; prezzoUnitario: number; aliquota: 22 | 10 | 4 | 0 }[];
+  /** Sede del cessionario (facoltativa via API: se manca si usa un segnaposto). */
+  cessionarioSede?: { indirizzo: string; cap: string; comune: string; provincia?: string } | null;
+  righe: { descrizione: string; quantita: number; prezzoUnitario: number; aliquota: 22 | 10 | 4 | 0; natura?: string }[];
   idempotencyKey?: string | null;
 };
 
@@ -229,7 +241,15 @@ export type CreateOptions = {
 };
 
 const ALIQUOTE = [22, 10, 4, 0];
-const SEDE_DEFAULT = { indirizzo: "Non indicato", cap: "00000", comune: "Non indicato", nazione: "IT" };
+/** Nature IVA ammesse per le righe a aliquota 0 e relativo riferimento normativo. */
+export const NATURE_IVA: Record<string, string> = {
+  N4: "Operazione esente (art. 10 DPR 633/72)",
+  "N3.6": "Operazione non imponibile",
+  "N2.2": "Operazione fuori campo IVA",
+  N1: "Operazione esclusa (art. 15 DPR 633/72)",
+};
+
+const SEDE_DEFAULT ={ indirizzo: "Non indicato", cap: "00000", comune: "Non indicato", nazione: "IT" };
 
 function validDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -240,7 +260,7 @@ function validDate(s: string): boolean {
 /** Validazione lato server con messaggi chiari per campo. Le chiavi sono i nomi dei campi del form (righe.0.prezzoUnitario ...). */
 export function validateNewInvoice(input: NewInvoiceInput): Record<string, string> {
   const e: Record<string, string> = {};
-  if (!input.cessionarioDenominazione?.trim()) e.cessionarioDenominazione = "La denominazione del cessionario e obbligatoria";
+  if (!input.cessionarioDenominazione?.trim()) e.cessionarioDenominazione = "La denominazione del cessionario è obbligatoria";
   if (!/^\d{11}$/.test((input.cessionarioPartitaIva ?? "").trim())) e.cessionarioPartitaIva = "La partita IVA deve avere 11 cifre";
   const cf = (input.cessionarioCodiceFiscale ?? "").trim();
   if (cf && !/^([A-Za-z0-9]{16}|\d{11})$/.test(cf)) e.cessionarioCodiceFiscale = "Il codice fiscale deve avere 16 caratteri (o 11 cifre)";
@@ -264,13 +284,21 @@ export function validateNewInvoice(input: NewInvoiceInput): Record<string, strin
   } else {
     input.righe.forEach((r, i) => {
       const p = `righe.${i}`;
-      if (!r.descrizione?.trim()) e[`${p}.descrizione`] = "La descrizione e obbligatoria";
+      if (!r.descrizione?.trim()) e[`${p}.descrizione`] = "La descrizione è obbligatoria";
       if (!Number.isFinite(r.quantita) || r.quantita <= 0 || Math.abs(Math.round(r.quantita * 1000) - r.quantita * 1000) > 1e-6)
-        e[`${p}.quantita`] = "La quantita deve essere maggiore di zero (massimo 3 decimali)";
+        e[`${p}.quantita`] = "La quantità deve essere maggiore di zero (massimo 3 decimali)";
       if (!Number.isFinite(r.prezzoUnitario) || r.prezzoUnitario < 0 || Math.abs(Math.round(r.prezzoUnitario * 100) - r.prezzoUnitario * 100) > 1e-6)
-        e[`${p}.prezzoUnitario`] = "Il prezzo deve essere zero o piu, con al massimo 2 decimali";
+        e[`${p}.prezzoUnitario`] = "Il prezzo deve essere zero o più, con al massimo 2 decimali";
       if (!ALIQUOTE.includes(r.aliquota)) e[`${p}.aliquota`] = "Aliquota non valida (22, 10, 4 o 0)";
+      if (r.natura && !NATURE_IVA[r.natura]) e[`${p}.natura`] = "Motivo dell'esenzione non valido";
     });
+  }
+  const sede = input.cessionarioSede;
+  if (sede) {
+    if (!sede.indirizzo?.trim()) e.cessionarioIndirizzo = "L'indirizzo è obbligatorio";
+    if (!/^\d{5}$/.test((sede.cap ?? "").trim())) e.cessionarioCap = "Il CAP deve avere 5 cifre";
+    if (!sede.comune?.trim()) e.cessionarioComune = "Il comune è obbligatorio";
+    if (sede.provincia?.trim() && !/^[A-Za-z]{2}$/.test(sede.provincia.trim())) e.cessionarioProvincia = "La provincia deve avere 2 lettere";
   }
   return e;
 }
@@ -287,7 +315,12 @@ function toModel(
     quantitaMilli: Math.round(r.quantita * 1000),
     prezzoUnitarioCents: Math.round(r.prezzoUnitario * 100),
     aliquotaBp: r.aliquota * 100,
-    ...(r.aliquota === 0 ? { natura: "N2.2", riferimentoNormativo: "Operazione non soggetta a IVA" } : {}),
+    ...(r.aliquota === 0
+      ? (() => {
+          const natura = r.natura && NATURE_IVA[r.natura] ? r.natura : "N2.2";
+          return { natura, riferimentoNormativo: NATURE_IVA[natura] };
+        })()
+      : {}),
   }));
   const valore = input.destinazione.valore.trim();
   const cf = (input.cessionarioCodiceFiscale ?? "").trim();
@@ -305,7 +338,15 @@ function toModel(
       partitaIva: input.cessionarioPartitaIva.trim(),
       ...(cf ? { codiceFiscale: cf.toUpperCase() } : {}),
       denominazione: input.cessionarioDenominazione.trim(),
-      sede: SEDE_DEFAULT,
+      sede: input.cessionarioSede
+        ? {
+            indirizzo: input.cessionarioSede.indirizzo.trim(),
+            cap: input.cessionarioSede.cap.trim(),
+            comune: input.cessionarioSede.comune.trim(),
+            ...(input.cessionarioSede.provincia?.trim() ? { provincia: input.cessionarioSede.provincia.trim().toUpperCase() } : {}),
+            nazione: "IT",
+          }
+        : SEDE_DEFAULT,
     },
     codiceDestinatario: input.destinazione.tipo === "codice" ? valore.toUpperCase() : "0000000",
     ...(input.destinazione.tipo === "pec" ? { pecDestinatario: valore } : {}),
@@ -343,6 +384,7 @@ const normalizedBody = (i: NewInvoiceInput) =>
   sha(
     JSON.stringify({
       c: [i.cessionarioDenominazione, i.cessionarioPartitaIva, i.cessionarioCodiceFiscale ?? "", i.destinazione, i.tipoDocumento, i.formato ?? "FPR12", i.data, i.righe],
+      ...(i.cessionarioSede ? { s: i.cessionarioSede } : {}),
     }),
   );
 
@@ -378,7 +420,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
       return null;
     }
     if ((x.body_hash as string).trim() !== bodyHash) {
-      return { errors: { idempotencyKey: "La stessa Idempotency-Key e gia stata usata con un corpo diverso" }, conflict: true };
+      return { errors: { idempotencyKey: "La stessa Idempotency-Key è già stata usata con un corpo diverso" }, conflict: true };
     }
     if (!x.invoice_id) return { errors: { idempotencyKey: "Richiesta con questa chiave ancora in corso" }, conflict: true };
     const s = await db.query("select status from invoices where id = $1", [x.invoice_id]);
@@ -475,7 +517,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
       );
     await hist(null, "draft", "Fattura creata");
     await client.query("update invoices set status = 'signed', updated_at = now() where id = $1", [invoiceId]);
-    await hist("draft", "signed", "XML validato e firmato CAdES-BES");
+    await hist("draft", "signed", "File controllato e firmato digitalmente");
     if (idemKey) await client.query("update api_idempotency set invoice_id = $3 where tenant_id = $1 and idem_key = $2", [tenant.id, idemKey, invoiceId]);
     await logEvent(
       {
@@ -492,7 +534,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
   } catch (err) {
     await client.query("rollback").catch(() => {});
     if ((err as { code?: string }).code === "23505") {
-      return { errors: { _form: "Conflitto su un identificativo gia usato: riprova." }, conflict: true };
+      return { errors: { _form: "Conflitto su un identificativo già usato: riprova." }, conflict: true };
     }
     throw err;
   } finally {
@@ -514,7 +556,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
   const status = s.rows[0].status as string;
   if (!sent.ok) return { id: invoiceId, status, queued: true, warning: `Fattura in coda: ${sent.error}` };
   if (sent.result.status === "send_error") return { id: invoiceId, status, warning: `Invio rifiutato da SdI: ${sent.result.codice} ${sent.result.messaggio}` };
-  if (sent.result.status === "send_unknown") return { id: invoiceId, status, warning: "Esito dell'invio incerto: SdI non ha risposto, riprovare piu tardi." };
+  if (sent.result.status === "send_unknown") return { id: invoiceId, status, warning: "Esito dell'invio incerto: SdI non ha risposto, riprovare più tardi." };
   return { id: invoiceId, status };
 }
 
@@ -550,7 +592,7 @@ export type ChannelCounters = {
   queued: number;
   errors24h: number;
   notifications: number;
-  recentErrors: { at: Date; invoiceId: string; numero: string; status: string; message: string }[];
+  recentErrors: { at: Date; invoiceId: string; numero: string; cliente: string | null; status: string; message: string }[];
 };
 
 /** Contatori della pagina Stato canale. Il cliente vede solo quelli del proprio tenant. */
@@ -563,14 +605,15 @@ export async function channelCounters(scope: Scope, opts: Opts = {}): Promise<Ch
     db.query(`select count(*)::int as c from invoices i where i.status = any('{draft,signed,sending,send_unknown}') ${and("i.tenant_id")}`, p),
     db.query(
       `select count(*)::int as c from invoice_status_history h
-        where h.to_status in ('send_error', 'rejected', 'not_delivered') and h.recorded_at > now() - interval '24 hours' ${and("h.tenant_id")}`,
+        where h.to_status in ('send_error', 'rejected', 'not_delivered') and h.source <> 'seed'
+          and h.recorded_at > now() - interval '24 hours' ${and("h.tenant_id")}`,
       p,
     ),
     db.query(`select count(*)::int as c from sdi_notifications s where true ${and("s.tenant_id")}`, p),
     db.query(
-      `select h.recorded_at, h.invoice_id, i.numero, h.to_status, h.causale
+      `select h.recorded_at, h.invoice_id, i.numero, i.cessionario_denominazione, h.to_status, h.causale
          from invoice_status_history h join invoices i on i.id = h.invoice_id
-        where h.to_status in ('send_error', 'rejected', 'not_delivered') ${and("h.tenant_id")}
+        where h.to_status in ('send_error', 'rejected', 'not_delivered') and h.source <> 'seed' ${and("h.tenant_id")}
         order by h.recorded_at desc, h.id desc limit 5`,
       p,
     ),
@@ -583,6 +626,7 @@ export async function channelCounters(scope: Scope, opts: Opts = {}): Promise<Ch
       at: x.recorded_at as Date,
       invoiceId: x.invoice_id as string,
       numero: x.numero as string,
+      cliente: (x.cessionario_denominazione as string | null) ?? null,
       status: x.to_status as string,
       message: x.causale as string,
     })),

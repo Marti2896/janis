@@ -61,11 +61,11 @@ export async function createTenant(
   const denominazione = input.denominazione.trim();
   const piva = input.partitaIva.trim();
   const cf = input.codiceFiscale?.trim().toUpperCase() || null;
-  if (!denominazione) throw new ValidationError("La denominazione e obbligatoria.", "denominazione");
+  if (!denominazione) throw new ValidationError("La denominazione è obbligatoria.", "denominazione");
   if (!/^\d{11}$/.test(piva)) throw new ValidationError("La partita IVA deve avere 11 cifre.", "partitaIva");
   if (cf && !/^([A-Z0-9]{16}|\d{11})$/.test(cf)) throw new ValidationError("Codice fiscale non valido.", "codiceFiscale");
   const dup = await db.query("select 1 from tenants where partita_iva = $1", [piva]);
-  if (dup.rowCount) throw new ValidationError("Esiste gia un account con questa partita IVA.", "partitaIva");
+  if (dup.rowCount) throw new ValidationError("Esiste già un account con questa partita IVA.", "partitaIva");
   const r = await db.query(
     "insert into tenants (partita_iva, denominazione, codice_fiscale) values ($1, $2, $3) returning id",
     [piva, denominazione, cf],

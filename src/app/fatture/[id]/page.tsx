@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
+import { STATUS_GUIDANCE, eventLabel, outcomeLabel } from "@/lib/invoice-guidance";
 import { formatDate, formatDateTime, formatEuro } from "@/lib/format";
 import { getInvoiceDetail } from "@/lib/server-api";
 import { requireSession } from "@/lib/session";
@@ -36,9 +37,16 @@ export default async function InvoiceDetailPage({
     ["Cedente", invoice.cedente],
     ["Cessionario", invoice.cessionario],
     ["Importo", formatEuro(invoice.importoCents)],
-    ["Ambiente", invoice.ambiente],
   ];
-  if (invoice.sdiIdentifier) fields.push(["IdentificativoSdI", invoice.sdiIdentifier]);
+  if (invoice.ambiente) fields.push(["Ambiente", invoice.ambiente]);
+  if (invoice.sdiIdentifier) fields.push(["Numero SdI", invoice.sdiIdentifier]);
+
+  // Una notifica e il cambio di stato che provoca arrivano nello stesso istante: si mostra una sola voce.
+  const notifTimes = invoice.events.filter((e) => e.kind === "notifica").map((e) => new Date(e.at).getTime());
+  const events = invoice.events.filter(
+    (e) => e.kind !== "stato" || !notifTimes.some((t) => Math.abs(t - new Date(e.at).getTime()) <= 2000),
+  );
+  const guidance = STATUS_GUIDANCE[invoice.status];
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
@@ -52,13 +60,17 @@ export default async function InvoiceDetailPage({
         <h1 className="text-3xl font-semibold">Fattura {invoice.numero}</h1>
         <StatusBadge status={invoice.status} />
       </div>
+      {guidance && <p className="-mt-2 text-muted-foreground">{guidance}</p>}
 
       {(invoice.status === "draft" || invoice.status === "signed") && (
         <Alert variant="warning">
           <Clock />
           <AlertTitle>Fattura in coda</AlertTitle>
           <AlertDescription>
-            <p>L&apos;endpoint SdI non è configurato: la fattura resta in coda.</p>
+            <p>
+              Fattura salvata e in attesa di invio: il collegamento al Sistema di Interscambio non è ancora attivo. Resta in coda
+              finché il canale non viene attivato.
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -92,19 +104,19 @@ export default async function InvoiceDetailPage({
           <CardTitle>Storico</CardTitle>
         </CardHeader>
         <CardContent>
-          {invoice.events.length === 0 ? (
+          {events.length === 0 ? (
             <p className="text-muted-foreground">Nessun evento registrato.</p>
           ) : (
             <ol className="flex flex-col border-l">
-              {invoice.events.map((e, i) => (
+              {events.map((e, i) => (
                 <li key={`${e.at}-${i}`} className="relative flex flex-col gap-1 pb-6 pl-6 last:pb-0">
                   <span className="absolute top-1.5 -left-1.5 size-3 rounded-full border bg-primary" />
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">{e.kind === "invio" ? "Invio" : e.kind === "notifica" ? "Notifica" : "Cambio stato"}</Badge>
-                    <span className="font-medium">{e.label}</span>
+                    <span className="font-medium">{eventLabel(e.label)}</span>
                   </div>
                   <time className="text-sm text-muted-foreground">{formatDateTime(e.at)}</time>
-                  {e.outcome && <p className="text-sm">Esito: {e.outcome}</p>}
+                  {outcomeLabel(e.outcome) && <p className="text-sm">{outcomeLabel(e.outcome)}</p>}
                   {e.error && <p className="text-sm text-destructive">{e.error}</p>}
                 </li>
               ))}

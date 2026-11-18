@@ -8,7 +8,7 @@ export default function NotFound() {
       <Card>
         <CardHeader>
           <CardTitle>Pagina non trovata</CardTitle>
-          <CardDescription>La pagina richiesta non esiste oppure non e disponibile per il tuo account.</CardDescription>
+          <CardDescription>La pagina richiesta non esiste oppure non è disponibile per il tuo account.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">

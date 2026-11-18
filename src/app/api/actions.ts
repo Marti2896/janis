@@ -12,7 +12,7 @@ export async function createKeyAction(
 ): Promise<KeyState> {
   const session = await requireSession();
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { ok: false, error: "Il nome e obbligatorio." };
+  if (!name) return { ok: false, error: "Il nome è obbligatorio." };
   const tenantId =
     session.user.role === "admin"
       ? String(formData.get("tenantId") ?? "")

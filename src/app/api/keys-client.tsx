@@ -47,7 +47,7 @@ export function NewKeyDialog({
             <DialogHeader>
               <DialogTitle>Chiave creata</DialogTitle>
               <DialogDescription>
-                Copiala ora: non sara piu mostrata.
+                Copiala ora: non sarà più mostrata.
               </DialogDescription>
             </DialogHeader>
             <code className="block break-all rounded-md border bg-muted p-3 font-mono text-sm">
@@ -71,7 +71,7 @@ export function NewKeyDialog({
             <DialogHeader>
               <DialogTitle>Nuova chiave API</DialogTitle>
               <DialogDescription>
-                Dai un nome alla chiave, ad esempio il sistema che la usera.
+                Dai un nome alla chiave, ad esempio il sistema che la userà.
               </DialogDescription>
             </DialogHeader>
             {tenants && (
@@ -135,8 +135,8 @@ export function RevokeKeyDialog({ id, name }: { id: string; name: string }) {
           <DialogHeader>
             <DialogTitle>Revocare la chiave?</DialogTitle>
             <DialogDescription>
-              La chiave «{name}» smettera di funzionare subito. L&apos;azione non
-              si puo annullare.
+              La chiave «{name}» smetterà di funzionare subito. L&apos;azione non
+              si può annullare.
             </DialogDescription>
           </DialogHeader>
           <input type="hidden" name="id" value={id} />

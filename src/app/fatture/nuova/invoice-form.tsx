@@ -5,10 +5,20 @@ import { AlertCircle, Loader2, Plus, Send, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { NATURE_OPTIONS } from "@/lib/nature-iva";
 import { createInvoiceAction, type NewInvoiceState } from "./actions";
 
 function FieldError({ message }: { message?: string }) {
@@ -22,6 +32,35 @@ interface Props {
   role: "admin" | "cliente";
   tenants: { id: string; denominazione: string }[];
 }
+
+interface Row {
+  id: number;
+  quantita: string;
+  prezzo: string;
+  aliquota: string;
+}
+
+const eur = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+
+function parseNum(v: string): number {
+  const n = Number(v.replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Importi in centesimi per riga: arrotondamento per riga, come nel file XML. */
+function totals(rows: { quantita: string; prezzo: string; aliquota: string }[]) {
+  let imponibile = 0;
+  let iva = 0;
+  for (const r of rows) {
+    const base = Math.round(parseNum(r.quantita) * parseNum(r.prezzo) * 100);
+    imponibile += base;
+    iva += Math.round((base * parseNum(r.aliquota)) / 100);
+  }
+  return { imponibile: imponibile / 100, iva: iva / 100, totale: (imponibile + iva) / 100 };
+}
+
+const TIPI: Record<string, string> = { TD01: "Fattura (TD01)", TD04: "Nota di credito (TD04)" };
+const FORMATI: Record<string, string> = { FPR12: "Privati e aziende (FPR12)", FPA12: "Pubblica amministrazione (FPA12)" };
 
 export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
   const [state, action, pending] = useActionState<NewInvoiceState, FormData>(
@@ -39,18 +78,41 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
     },
     { fieldErrors: {}, error: null },
   );
-  const [rowIds, setRowIds] = useState<number[]>([0]);
+  const [rows, setRows] = useState<Row[]>([{ id: 0, quantita: "1", prezzo: "", aliquota: "22" }]);
   const [nextId, setNextId] = useState(1);
   const [destTipo, setDestTipo] = useState("codice");
+  const [summary, setSummary] = useState<FormData | null>(null);
   const e = state.fieldErrors;
+  const tot = totals(rows);
+
+  function patchRow(id: number, patch: Partial<Row>) {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
 
   function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     if (pending) return;
     const fd = new FormData(ev.currentTarget);
-    fd.set("righe.count", String(rowIds.length));
+    fd.set("righe.count", String(rows.length));
+    setSummary(fd);
+  }
+
+  function confirmSend() {
+    if (!summary || pending) return;
+    const fd = summary;
+    setSummary(null);
     startTransition(() => action(fd));
   }
+
+  const sv = (k: string) => String(summary?.get(k) ?? "");
+  const summaryRows = summary
+    ? rows.map((r, i) => ({
+        descrizione: sv(`righe.${i}.descrizione`),
+        quantita: sv(`righe.${i}.quantita`),
+        prezzo: sv(`righe.${i}.prezzoUnitario`),
+        aliquota: sv(`righe.${i}.aliquota`),
+      }))
+    : [];
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
@@ -72,7 +134,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Cedente</CardTitle>
-          <CardDescription>Il cedente e il tuo account e non si puo modificare.</CardDescription>
+          <CardDescription>Il cedente è il tuo account e non si può modificare.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {role === "admin" ? (
@@ -122,6 +184,26 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
             <Input id="cf" name="cessionario.codiceFiscale" aria-invalid={e["cessionario.codiceFiscale"] ? true : undefined} />
             <FieldError message={e["cessionario.codiceFiscale"]} />
           </div>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label htmlFor="indirizzo">Indirizzo</Label>
+            <Input id="indirizzo" name="cessionario.indirizzo" autoComplete="off" aria-invalid={e["cessionario.indirizzo"] ? true : undefined} />
+            <FieldError message={e["cessionario.indirizzo"]} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cap">CAP</Label>
+            <Input id="cap" name="cessionario.cap" inputMode="numeric" maxLength={5} aria-invalid={e["cessionario.cap"] ? true : undefined} />
+            <FieldError message={e["cessionario.cap"]} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="comune">Comune</Label>
+            <Input id="comune" name="cessionario.comune" aria-invalid={e["cessionario.comune"] ? true : undefined} />
+            <FieldError message={e["cessionario.comune"]} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="provincia">Provincia (sigla, opzionale)</Label>
+            <Input id="provincia" name="cessionario.provincia" maxLength={2} placeholder="MI" aria-invalid={e["cessionario.provincia"] ? true : undefined} />
+            <FieldError message={e["cessionario.provincia"]} />
+          </div>
           <div className="flex flex-col gap-3 sm:col-span-2">
             <Label>Destinazione</Label>
             <RadioGroup name="destinazione.tipo" value={destTipo} onValueChange={setDestTipo} className="flex gap-6">
@@ -148,6 +230,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Documento</CardTitle>
+          <CardDescription>Il numero fattura è assegnato dal sistema al momento dell&apos;invio.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="flex flex-col gap-2">
@@ -157,8 +240,11 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="TD01">TD01 Fattura</SelectItem>
-                <SelectItem value="TD04">TD04 Nota di credito</SelectItem>
+                {Object.entries(TIPI).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>
+                    {l}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FieldError message={e["tipoDocumento"]} />
@@ -170,8 +256,11 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="FPR12">FPR12 Privati</SelectItem>
-                <SelectItem value="FPA12">FPA12 Pubblica amministrazione</SelectItem>
+                {Object.entries(FORMATI).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>
+                    {l}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FieldError message={e["formato"]} />
@@ -187,30 +276,43 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Righe</CardTitle>
-          <CardDescription>Il numero fattura e assegnato dal sistema.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          {rowIds.map((id, i) => (
-            <div key={id} className="grid gap-4 border-b pb-6 last:border-b-0 last:pb-0 sm:grid-cols-6">
+          {rows.map((row, i) => (
+            <div key={row.id} className="grid gap-4 border-b pb-6 last:border-b-0 last:pb-0 sm:grid-cols-6">
               <div className="flex flex-col gap-2 sm:col-span-6">
-                <Label htmlFor={`desc-${id}`}>Descrizione</Label>
-                <Input id={`desc-${id}`} name={`righe.${i}.descrizione`} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
+                <Label htmlFor={`desc-${row.id}`}>Descrizione</Label>
+                <Input id={`desc-${row.id}`} name={`righe.${i}.descrizione`} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
                 <FieldError message={e[`righe.${i}.descrizione`]} />
               </div>
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <Label htmlFor={`qta-${id}`}>Quantita</Label>
-                <Input id={`qta-${id}`} name={`righe.${i}.quantita`} inputMode="decimal" defaultValue="1" aria-invalid={e[`righe.${i}.quantita`] ? true : undefined} />
+                <Label htmlFor={`qta-${row.id}`}>Quantità</Label>
+                <Input
+                  id={`qta-${row.id}`}
+                  name={`righe.${i}.quantita`}
+                  inputMode="decimal"
+                  value={row.quantita}
+                  onChange={(ev) => patchRow(row.id, { quantita: ev.target.value })}
+                  aria-invalid={e[`righe.${i}.quantita`] ? true : undefined}
+                />
                 <FieldError message={e[`righe.${i}.quantita`]} />
               </div>
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <Label htmlFor={`prz-${id}`}>Prezzo unitario (EUR)</Label>
-                <Input id={`prz-${id}`} name={`righe.${i}.prezzoUnitario`} inputMode="decimal" aria-invalid={e[`righe.${i}.prezzoUnitario`] ? true : undefined} />
+                <Label htmlFor={`prz-${row.id}`}>Prezzo unitario (EUR)</Label>
+                <Input
+                  id={`prz-${row.id}`}
+                  name={`righe.${i}.prezzoUnitario`}
+                  inputMode="decimal"
+                  value={row.prezzo}
+                  onChange={(ev) => patchRow(row.id, { prezzo: ev.target.value })}
+                  aria-invalid={e[`righe.${i}.prezzoUnitario`] ? true : undefined}
+                />
                 <FieldError message={e[`righe.${i}.prezzoUnitario`]} />
               </div>
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <Label htmlFor={`iva-${id}`}>Aliquota IVA</Label>
-                <Select name={`righe.${i}.aliquota`} defaultValue="22">
-                  <SelectTrigger id={`iva-${id}`} className="w-full">
+                <Label htmlFor={`iva-${row.id}`}>Aliquota IVA</Label>
+                <Select name={`righe.${i}.aliquota`} value={row.aliquota} onValueChange={(v) => patchRow(row.id, { aliquota: v })}>
+                  <SelectTrigger id={`iva-${row.id}`} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -223,13 +325,31 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
                 </Select>
                 <FieldError message={e[`righe.${i}.aliquota`]} />
               </div>
-              {rowIds.length > 1 && (
+              {row.aliquota === "0" && (
+                <div className="flex flex-col gap-2 sm:col-span-6">
+                  <Label htmlFor={`nat-${row.id}`}>Motivo dell&apos;esenzione</Label>
+                  <Select name={`righe.${i}.natura`}>
+                    <SelectTrigger id={`nat-${row.id}`} className="w-full" aria-invalid={e[`righe.${i}.natura`] ? true : undefined}>
+                      <SelectValue placeholder="Scegli il motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NATURE_OPTIONS.map((n) => (
+                        <SelectItem key={n.value} value={n.value}>
+                          {n.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError message={e[`righe.${i}.natura`]} />
+                </div>
+              )}
+              {rows.length > 1 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="w-fit sm:col-span-6"
-                  onClick={() => setRowIds((ids) => ids.filter((x) => x !== id))}
+                  onClick={() => setRows((rs) => rs.filter((x) => x.id !== row.id))}
                 >
                   <Trash2 />
                   Rimuovi riga
@@ -242,13 +362,27 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
             variant="outline"
             className="w-fit"
             onClick={() => {
-              setRowIds((ids) => [...ids, nextId]);
+              setRows((rs) => [...rs, { id: nextId, quantita: "1", prezzo: "", aliquota: "22" }]);
               setNextId((n) => n + 1);
             }}
           >
             <Plus />
             Aggiungi riga
           </Button>
+          <dl className="flex flex-col gap-1 rounded-md border bg-muted/40 p-4 text-sm" aria-live="polite">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Imponibile</dt>
+              <dd>{eur.format(tot.imponibile)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">IVA</dt>
+              <dd>{eur.format(tot.iva)}</dd>
+            </div>
+            <div className="flex justify-between gap-4 text-base font-semibold">
+              <dt>Totale documento</dt>
+              <dd>{eur.format(tot.totale)}</dd>
+            </div>
+          </dl>
         </CardContent>
       </Card>
 
@@ -256,6 +390,61 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
         {pending ? <Loader2 className="animate-spin" /> : <Send />}
         {pending ? "Invio in corso…" : "Crea e invia"}
       </Button>
+
+      <Dialog open={summary !== null} onOpenChange={(o) => !o && setSummary(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Controlla prima di inviare</DialogTitle>
+            <DialogDescription>
+              Dopo l&apos;invio la fattura non si può modificare: per correggerla servirà una nota di credito.
+            </DialogDescription>
+          </DialogHeader>
+          <dl className="grid gap-2 text-sm sm:grid-cols-[auto_1fr]">
+            <dt className="text-muted-foreground">Cliente</dt>
+            <dd>
+              {sv("cessionario.denominazione")} (P.IVA {sv("cessionario.partitaIva")})
+            </dd>
+            <dt className="text-muted-foreground">{sv("destinazione.tipo") === "pec" ? "PEC" : "Codice destinatario"}</dt>
+            <dd>{sv("destinazione.valore")}</dd>
+            <dt className="text-muted-foreground">Documento</dt>
+            <dd>
+              {TIPI[sv("tipoDocumento")] ?? sv("tipoDocumento")} del {sv("data").split("-").reverse().join("/")}
+            </dd>
+          </dl>
+          <div className="max-w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Descrizione</TableHead>
+                  <TableHead className="text-right">Quantità</TableHead>
+                  <TableHead className="text-right">Prezzo</TableHead>
+                  <TableHead className="text-right">IVA</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summaryRows.map((r, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{r.descrizione}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{r.quantita}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{eur.format(parseNum(r.prezzo))}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{r.aliquota}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-right text-base font-semibold">Totale documento: {eur.format(tot.totale)}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSummary(null)}>
+              Torna a modificare
+            </Button>
+            <Button type="button" onClick={confirmSend} disabled={pending}>
+              <Send />
+              Conferma e invia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

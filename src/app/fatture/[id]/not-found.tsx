@@ -12,7 +12,7 @@ export default function InvoiceNotFound() {
             <FileX className="size-5" />
             Fattura non trovata
           </CardTitle>
-          <CardDescription>La fattura richiesta non esiste oppure non e disponibile per il tuo account.</CardDescription>
+          <CardDescription>La fattura richiesta non esiste oppure non è disponibile per il tuo account.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">

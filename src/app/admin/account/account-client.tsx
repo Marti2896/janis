@@ -35,7 +35,7 @@ function TempPassword({ state }: { state: AccountState }) {
           {state.tempPassword}
         </code>
         <p>
-          Viene mostrata una sola volta: copiala ora. L&apos;utente dovra
+          Viene mostrata una sola volta: copiala ora. L&apos;utente dovrà
           cambiarla al primo accesso.
         </p>
       </AlertDescription>
@@ -127,15 +127,58 @@ export function UserActions({
     initial,
   );
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lastAction, setLastAction] = useState<"off" | "on" | null>(null);
   return (
-    <div className="flex flex-wrap justify-end gap-2">
-      <form action={toggle}>
-        <input type="hidden" name="userId" value={userId} />
-        <input type="hidden" name="disable" value={disabled ? "0" : "1"} />
-        <Button size="sm" variant="outline" disabled={togglePending}>
-          {disabled ? "Riattiva" : "Disattiva"}
-        </Button>
-      </form>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {toggleState.ok && lastAction && (
+        <span role="status" className="text-sm text-muted-foreground">
+          {lastAction === "off" ? "Utente disattivato" : "Utente riattivato"}
+        </span>
+      )}
+      {disabled ? (
+        <form action={toggle} onSubmit={() => setLastAction("on")}>
+          <input type="hidden" name="userId" value={userId} />
+          <input type="hidden" name="disable" value="0" />
+          <Button size="sm" variant="outline" disabled={togglePending}>
+            Riattiva
+          </Button>
+        </form>
+      ) : (
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              Disattiva
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Disattivare l&apos;utente?</DialogTitle>
+              <DialogDescription>
+                {email} non potrà più accedere finché non lo riattivi.
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              action={(fd) => {
+                setLastAction("off");
+                setConfirmOpen(false);
+                toggle(fd);
+              }}
+            >
+              <input type="hidden" name="userId" value={userId} />
+              <input type="hidden" name="disable" value="1" />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>
+                  Annulla
+                </Button>
+                <Button type="submit" variant="destructive">
+                  Disattiva utente
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button size="sm" variant="outline">

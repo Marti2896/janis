@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { forbidden } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { listTenants } from "@/server/tenants";
@@ -17,18 +21,37 @@ import {
 import { NewAccountDialog, UserActions } from "./account-client";
 
 
-export default async function AccountPage() {
+export const metadata: Metadata = { title: "Account" };
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const session = await requireSession();
   if (session.user.role !== "admin") forbidden();
-    const [tenants, users, keys] = await Promise.all([listTenants(session.scope), listUsers(session.scope), listApiKeys(session.scope)]);
+    const { q } = await searchParams;
+    const term = (q ?? "").trim().toLowerCase();
+    const [allTenants, users, keys] = await Promise.all([listTenants(session.scope), listUsers(session.scope), listApiKeys(session.scope)]);
+    const tenants = term
+      ? allTenants.filter(
+          (t) =>
+            t.denominazione.toLowerCase().includes(term) ||
+            users.some((u) => u.tenantId === t.id && u.email.toLowerCase().includes(term)),
+        )
+      : allTenants;
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Account</h1>
           <NewAccountDialog />
         </div>
+        <form className="flex gap-2" role="search">
+          <Input name="q" defaultValue={q ?? ""} placeholder="Cerca per nome azienda o email" aria-label="Cerca account" />
+          <Button type="submit" variant="outline"><Search /> Cerca</Button>
+        </form>
         {tenants.length === 0 && (
-          <p className="text-muted-foreground">Nessun account cliente.</p>
+          <p className="text-muted-foreground">{term ? "Nessun account corrisponde alla ricerca." : "Nessun account cliente."}</p>
         )}
         {tenants.map((t) => {
           const tu = users.filter((u) => u.tenantId === t.id);

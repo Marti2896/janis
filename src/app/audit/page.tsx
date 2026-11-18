@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { AUDIT_CATEGORIES, auditActionLabel, auditErrorReason } from "@/lib/audit-labels";
+import { Badge } from "@/components/ui/badge";
 import { requireSession } from "@/lib/session";
 import { listAudit } from "@/server/audit";
 import { listTenants } from "@/server/tenants";
@@ -24,7 +27,9 @@ import {
 
 const PAGE_SIZE = 50;
 
-type SP = { da?: string; a?: string; account?: string; pagina?: string };
+type SP = { da?: string; a?: string; account?: string; tipo?: string; pagina?: string };
+
+export const metadata: Metadata = { title: "Cronologia attività" };
 
 export default async function AuditPage({
   searchParams,
@@ -39,11 +44,13 @@ export default async function AuditPage({
   const from = isDate(sp.da) ? sp.da : undefined;
   const to = isDate(sp.a) ? sp.a : undefined;
   const account = isAdmin && sp.account ? sp.account : undefined;
+  const category = AUDIT_CATEGORIES.find((c) => c.value === sp.tipo)?.value;
     const [rows, tenants] = await Promise.all([
       listAudit(session.scope, {
         from,
         to,
         tenantId: account,
+        category,
         limit: PAGE_SIZE + 1,
         offset: (page - 1) * PAGE_SIZE,
       }),
@@ -56,13 +63,14 @@ export default async function AuditPage({
       if (from) u.set("da", from);
       if (to) u.set("a", to);
       if (account) u.set("account", account);
+      if (category) u.set("tipo", category);
       u.set("pagina", String(p));
       return `/audit?${u.toString()}`;
     };
     const tenantName = (id: string) => tenants.find((t) => t.id === id)?.denominazione ?? "Account";
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
-        <h1 className="text-2xl font-semibold">Audit</h1>
+        <h1 className="text-2xl font-semibold">Cronologia attività</h1>
         <form method="get" className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">
             <Label htmlFor="da">Data da</Label>
@@ -89,6 +97,21 @@ export default async function AuditPage({
               </Select>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="tipo">Tipo di attività</Label>
+            <Select name="tipo" defaultValue={category}>
+              <SelectTrigger id="tipo" className="w-40">
+                <SelectValue placeholder="Tutte" />
+              </SelectTrigger>
+              <SelectContent>
+                {AUDIT_CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button type="submit">Filtra</Button>
         </form>
         <Card>
@@ -119,9 +142,32 @@ export default async function AuditPage({
                           <span className="text-muted-foreground">Sistema</span>
                         )}
                       </TableCell>
-                      <TableCell>{r.event}</TableCell>
-                      <TableCell>{r.entity ?? "-"}</TableCell>
-                      <TableCell>{r.outcome ?? "-"}</TableCell>
+                      <TableCell>{auditActionLabel(r.event, r.detail)}</TableCell>
+                      <TableCell>
+                        {r.objectLabel ? (
+                          r.objectHref ? (
+                            <Link href={r.objectHref} className="underline underline-offset-4">
+                              {r.objectLabel}
+                            </Link>
+                          ) : (
+                            r.objectLabel
+                          )
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {r.outcome === "error" ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <Badge variant="destructive">Errore</Badge>
+                            {auditErrorReason(r.event, r.detail) && (
+                              <span className="text-xs text-muted-foreground">{auditErrorReason(r.event, r.detail)}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="success">Riuscito</Badge>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -49,7 +49,7 @@ export async function createClientUser(
   const email = input.email.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) throw new ValidationError("Email non valida.", "email");
   const exists = await db.query("select 1 from users where lower(email) = $1", [email]);
-  if (exists.rowCount) throw new ValidationError("Esiste gia un utente con questa email.", "email");
+  if (exists.rowCount) throw new ValidationError("Esiste già un utente con questa email.", "email");
   const tenant = await db.query("select id from tenants where id = $1", [input.tenantId]);
   if (!tenant.rowCount) throw new ValidationError("Account non trovato.", "tenantId");
   const temporaryPassword = generateTemporaryPassword();

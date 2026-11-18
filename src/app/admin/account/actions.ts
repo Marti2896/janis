@@ -22,7 +22,7 @@ export async function createAccountAction(
   const partitaIva = String(formData.get("partitaIva") ?? "").trim();
   const codiceFiscale = String(formData.get("codiceFiscale") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!denominazione) return { ok: false, error: "La denominazione e obbligatoria." };
+  if (!denominazione) return { ok: false, error: "La denominazione è obbligatoria." };
   if (!/^\d{11}$/.test(partitaIva))
     return { ok: false, error: "La partita IVA deve avere 11 cifre." };
   if (!/^\S+@\S+\.\S+$/.test(email))
@@ -36,7 +36,7 @@ export async function createAccountAction(
     );
     password = res.temporaryPassword;
   } catch (e) {
-    const msg = e instanceof Error && e.name === "ValidationError" ? e.message : "Account non creato: email o partita IVA gia in uso.";
+    const msg = e instanceof Error && e.name === "ValidationError" ? e.message : "Account non creato: email o partita IVA già in uso.";
     return { ok: false, error: msg };
   }
   revalidatePath("/admin/account");

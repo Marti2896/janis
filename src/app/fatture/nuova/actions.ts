@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createAndSendInvoice, type NewInvoiceInput } from "@/lib/server-api";
 import { requireSession } from "@/lib/session";
+import { NATURE_VALUES } from "@/lib/nature-iva";
 
 export interface NewInvoiceState {
   /** Chiave: nome del campo (es. cessionario.partitaIva, righe.0.descrizione). */
@@ -28,7 +29,16 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
   if (user.role === "admin" && !tenantId) errors["tenantId"] = "Seleziona l'account che emette la fattura";
 
   const denominazione = str(formData, "cessionario.denominazione");
-  if (!denominazione) errors["cessionario.denominazione"] = "La denominazione e obbligatoria";
+  if (!denominazione) errors["cessionario.denominazione"] = "La denominazione è obbligatoria";
+
+  const indirizzo = str(formData, "cessionario.indirizzo");
+  if (!indirizzo) errors["cessionario.indirizzo"] = "L'indirizzo è obbligatorio";
+  const cap = str(formData, "cessionario.cap");
+  if (!/^\d{5}$/.test(cap)) errors["cessionario.cap"] = "Il CAP deve avere 5 cifre";
+  const comune = str(formData, "cessionario.comune");
+  if (!comune) errors["cessionario.comune"] = "Il comune è obbligatorio";
+  const provincia = str(formData, "cessionario.provincia").toUpperCase();
+  if (provincia && !/^[A-Z]{2}$/.test(provincia)) errors["cessionario.provincia"] = "La provincia deve avere 2 lettere (es. MI)";
 
   const partitaIva = str(formData, "cessionario.partitaIva");
   if (!/^\d{11}$/.test(partitaIva)) errors["cessionario.partitaIva"] = "La partita IVA deve avere 11 cifre";
@@ -63,11 +73,13 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
     const quantita = num(str(formData, `righe.${i}.quantita`));
     const prezzoUnitario = num(str(formData, `righe.${i}.prezzoUnitario`));
     const aliquota = num(str(formData, `righe.${i}.aliquota`));
-    if (!descrizione) errors[`righe.${i}.descrizione`] = "La descrizione e obbligatoria";
-    if (!Number.isFinite(quantita) || quantita <= 0) errors[`righe.${i}.quantita`] = "La quantita deve essere maggiore di zero";
+    const natura = str(formData, `righe.${i}.natura`);
+    if (!descrizione) errors[`righe.${i}.descrizione`] = "La descrizione è obbligatoria";
+    if (!Number.isFinite(quantita) || quantita <= 0) errors[`righe.${i}.quantita`] = "La quantità deve essere maggiore di zero";
     if (!Number.isFinite(prezzoUnitario) || prezzoUnitario < 0) errors[`righe.${i}.prezzoUnitario`] = "Prezzo non valido";
     if (!ALIQUOTE.includes(aliquota)) errors[`righe.${i}.aliquota`] = "Aliquota non valida";
-    righe.push({ descrizione, quantita, prezzoUnitario, aliquota });
+    if (aliquota === 0 && !NATURE_VALUES.includes(natura)) errors[`righe.${i}.natura`] = "Indica il motivo dell'esenzione";
+    righe.push({ descrizione, quantita, prezzoUnitario, aliquota, ...(aliquota === 0 ? { natura } : {}) });
   }
   if (righe.length === 0) return { fieldErrors: errors, error: "Aggiungi almeno una riga." };
 
@@ -79,7 +91,7 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
     result = await createAndSendInvoice(scope, {
     tenantId: user.role === "admin" ? tenantId : undefined,
     idempotencyKey,
-    cessionario: { denominazione, partitaIva, codiceFiscale: codiceFiscale || undefined },
+    cessionario: { denominazione, partitaIva, codiceFiscale: codiceFiscale || undefined, sede: { indirizzo, cap, comune, ...(provincia ? { provincia } : {}) } },
     destinazione: { tipo: tipoDest, valore: tipoDest === "codice" ? valoreDest.toUpperCase() : valoreDest },
     tipoDocumento: tipoDocumento as "TD01" | "TD04",
     formato: formato as "FPR12" | "FPA12",

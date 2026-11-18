@@ -1,5 +1,10 @@
 import { Activity, AlertTriangle, Bell, Clock } from "lucide-react";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { statusLabel } from "@/components/status-badge";
 import { requireSession } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Stato del canale" };
 import { channelCounters } from "@/server/invoice-service";
 import { getChannelSettings } from "@/server/channel-settings";
 import { Badge } from "@/components/ui/badge";
@@ -29,9 +34,9 @@ export default async function StatoPage() {
     ]);
     const prod = settings.environment === "production";
     const items = [
-      { label: "In coda", value: counters.queued, icon: Clock },
-      { label: "Errori ultime 24 ore", value: counters.errors24h, icon: AlertTriangle },
-      { label: "Notifiche ricevute", value: counters.notifications, icon: Bell },
+      { label: "In coda", value: counters.queued, icon: Clock, href: "/fatture?stato=queued" },
+      { label: "Errori ultime 24 ore", value: counters.errors24h, icon: AlertTriangle, href: "/fatture?stato=errors" },
+      { label: "Notifiche ricevute", value: counters.notifications, icon: Bell, href: null },
     ];
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
@@ -48,6 +53,9 @@ export default async function StatoPage() {
                 {prod ? "Produzione" : "Demo"}
               </Badge>
             </div>
+            {!prod && !isAdmin && (
+              <p className="text-muted-foreground">Ambiente di prova: le fatture non hanno valore fiscale.</p>
+            )}
             {isAdmin && (
               <>
                 <p className="text-muted-foreground">
@@ -64,16 +72,25 @@ export default async function StatoPage() {
           </CardContent>
         </Card>
         <div className="grid gap-4 sm:grid-cols-3">
-          {items.map(({ label, value, icon: Icon }) => (
-            <Card key={label}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Icon className="size-4" /> {label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-3xl font-semibold">{value}</CardContent>
-            </Card>
-          ))}
+          {items.map(({ label, value, icon: Icon, href }) => {
+            const card = (
+              <Card className={href ? "h-full hover:bg-accent" : "h-full"}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Icon className="size-4" /> {label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-3xl font-semibold">{value}</CardContent>
+              </Card>
+            );
+            return href ? (
+              <Link key={label} href={href} aria-label={`${label}: ${value}. Apri l'elenco delle fatture`}>
+                {card}
+              </Link>
+            ) : (
+              <div key={label}>{card}</div>
+            );
+          })}
         </div>
         <Card>
           <CardHeader>
@@ -86,7 +103,11 @@ export default async function StatoPage() {
               <ul className="space-y-2 text-sm">
                 {counters.recentErrors.map((e) => (
                   <li key={`${e.invoiceId}-${String(e.at)}`} className="flex justify-between gap-4">
-                    <span>{e.message}</span>
+                    <Link href={`/fatture/${e.invoiceId}`} className="underline-offset-4 hover:underline">
+                      Fattura {e.numero}
+                      {e.cliente ? ` - ${e.cliente}` : ""}: {statusLabel(e.status).toLowerCase()}
+                      {e.message ? `, ${e.message}` : ""}
+                    </Link>
                     <span className="shrink-0 text-muted-foreground">
                       {new Date(e.at).toLocaleString("it-IT")}
                     </span>

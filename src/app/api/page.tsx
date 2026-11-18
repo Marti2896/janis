@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { requireSession } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Chiavi API" };
 import { listApiKeys } from "@/server/api-keys";
 import { listTenants } from "@/server/tenants";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +30,12 @@ export default async function ApiPage() {
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">API</h1>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold">API</h1>
+            <p className="text-sm text-muted-foreground">
+              Le chiavi servono a collegare il tuo gestionale o CRM: crea una chiave e consegnala al tuo tecnico.
+            </p>
+          </div>
           <NewKeyDialog
             tenants={
               isAdmin

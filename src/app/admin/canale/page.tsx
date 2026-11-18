@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { forbidden } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { getChannelSettings } from "@/server/channel-settings";
@@ -5,6 +6,8 @@ import { listCertificates } from "@/server/certificates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CanaleForm } from "./canale-form";
 
+
+export const metadata: Metadata = { title: "Canale SdI" };
 
 export default async function CanalePage() {
   const session = await requireSession();

@@ -7,7 +7,11 @@ import { TableRow } from "@/components/ui/table";
 export function InvoiceRowLink({ href, children }: { href: string; children: React.ReactNode }) {
   const router = useRouter();
   return (
-    <TableRow className="cursor-pointer" onClick={() => router.push(href)}>
+    <TableRow className="cursor-pointer" onClick={(ev) => {
+        // Link e pulsanti dentro la riga (es. Scarica) hanno la loro azione.
+        if ((ev.target as HTMLElement).closest("a, button")) return;
+        router.push(href);
+      }}>
       {children}
     </TableRow>
   );

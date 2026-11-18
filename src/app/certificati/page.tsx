@@ -1,7 +1,9 @@
 import { forbidden } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { listCertificates } from "@/server/certificates";
-import { CertificateBadge } from "@/components/certificate-badge";
+import type { Metadata } from "next";
+import { Badge } from "@/components/ui/badge";
+import { CertificateBadge, certificateLevel } from "@/components/certificate-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +15,13 @@ import {
 } from "@/components/ui/table";
 import { UploadDialog } from "./upload-dialog";
 
+
+export const metadata: Metadata = { title: "Certificati" };
+
+/** Nome comune (CN) di un distinguished name; se manca, il DN intero. */
+function commonName(dn: string): string {
+  return /(?:^|,\s*)CN=([^,]+)/.exec(dn)?.[1]?.trim() ?? dn;
+}
 
 export default async function CertificatiPage() {
   const session = await requireSession();
@@ -44,14 +53,18 @@ export default async function CertificatiPage() {
                 <TableBody>
                   {certs.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell>{c.subject}</TableCell>
-                      <TableCell>{c.issuer}</TableCell>
+                      <TableCell title={c.subject}>{commonName(c.subject)}</TableCell>
+                      <TableCell title={c.issuer}>{commonName(c.issuer)}</TableCell>
                       <TableCell>{c.environment}</TableCell>
                       <TableCell>
                         {new Date(c.notAfter).toLocaleDateString("it-IT")}
                       </TableCell>
                       <TableCell>
-                        <CertificateBadge notAfter={c.notAfter} />
+                        {certificateLevel(c.notAfter) === "ok" ? (
+                          <Badge variant="success">Valido</Badge>
+                        ) : (
+                          <CertificateBadge notAfter={c.notAfter} />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

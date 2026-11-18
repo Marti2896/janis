@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { Inbox } from "lucide-react";
+import type { Metadata } from "next";
+import { Download, Inbox } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { InvoiceRowLink } from "@/app/fatture/invoice-row-link";
 import { requireSession } from "@/lib/session";
 import { listReceived, listUnassigned } from "@/server/invoice-service";
 import { listTenants } from "@/server/tenants";
@@ -15,6 +18,8 @@ import {
 } from "@/components/ui/table";
 import { AssignDialog } from "./assign-dialog";
 
+
+export const metadata: Metadata = { title: "Fatture ricevute" };
 
 const fmtDate = (d: Date | string) =>
   new Date(d).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
@@ -61,7 +66,7 @@ export default async function RicevutePage() {
                     {unassigned.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell>{fmtDate(r.receivedAt)}</TableCell>
-                        <TableCell>{r.cedentePiva}</TableCell>
+                        <TableCell>{r.cedenteDenominazione ?? r.cedentePiva ?? "-"}</TableCell>
                         <TableCell>{r.numero ?? "-"}</TableCell>
                         <TableCell className="text-right">
                           <AssignDialog
@@ -97,12 +102,13 @@ export default async function RicevutePage() {
                     <TableHead>Numero</TableHead>
                     <TableHead>Importo</TableHead>
                     <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">File</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>
+                    <InvoiceRowLink key={r.id} href={`/ricevute/${r.id}`}>
+                      <TableCell className="whitespace-nowrap">
                         <Link
                           href={`/ricevute/${r.id}`}
                           className="underline-offset-4 hover:underline"
@@ -110,13 +116,25 @@ export default async function RicevutePage() {
                           {fmtDate(r.receivedAt)}
                         </Link>
                       </TableCell>
-                      <TableCell>{r.cedentePiva}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{r.cedenteDenominazione ?? r.cedentePiva ?? "-"}</div>
+                        {r.cedenteDenominazione && r.cedentePiva && (
+                          <div className="text-xs text-muted-foreground">P.IVA {r.cedentePiva}</div>
+                        )}
+                      </TableCell>
                       <TableCell>{r.numero ?? "-"}</TableCell>
                       <TableCell>{fmtMoney(r.importoCents)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{receivedLabel(r.stato)}</Badge>
                       </TableCell>
-                    </TableRow>
+                      <TableCell className="text-right">
+                        <Button asChild variant="outline" size="sm">
+                          <a href={`/ricevute/${r.id}/download`} aria-label={`Scarica la fattura ${r.numero ?? ""}`}>
+                            <Download /> Scarica
+                          </a>
+                        </Button>
+                      </TableCell>
+                    </InvoiceRowLink>
                   ))}
                 </TableBody>
               </Table>

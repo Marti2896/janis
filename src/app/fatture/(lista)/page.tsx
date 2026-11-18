@@ -15,7 +15,9 @@ import { InvoiceRowLink } from "../invoice-row-link";
 
 export const metadata: Metadata = { title: "Fatture emesse" };
 
-type SearchParams = Promise<{ stato?: string; account?: string }>;
+type SearchParams = Promise<{ stato?: string; account?: string; q?: string; pagina?: string }>;
+
+const PAGE_SIZE = 25;
 
 function InvoicesSkeleton() {
   return (
@@ -28,17 +30,32 @@ function InvoicesSkeleton() {
 }
 
 async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchParams: SearchParams }) {
-  const { stato, account } = await searchParams;
-  const rows = await listInvoices(scope, {
+  const { stato, account, q, pagina } = await searchParams;
+  const page = Math.max(1, Number(pagina) || 1);
+  const fetched = await listInvoices(scope, {
     stato: stato || undefined,
     tenantId: scope.role === "admin" ? account || undefined : undefined,
+    q: q || undefined,
+    limit: PAGE_SIZE + 1,
+    offset: (page - 1) * PAGE_SIZE,
   });
+  const hasNext = fetched.length > PAGE_SIZE;
+  const rows = fetched.slice(0, PAGE_SIZE);
+  const isAdmin = scope.role === "admin";
+  const pageHref = (p: number) => {
+    const u = new URLSearchParams();
+    if (stato) u.set("stato", stato);
+    if (account) u.set("account", account);
+    if (q) u.set("q", q);
+    u.set("pagina", String(p));
+    return `/fatture?${u.toString()}`;
+  };
 
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">
         <p className="text-muted-foreground">
-          {stato || account ? "Nessuna fattura corrisponde ai filtri." : "Nessuna fattura emessa. Crea la prima fattura."}
+          {stato || account || q ? "Nessuna fattura corrisponde ai filtri." : "Nessuna fattura emessa. Crea la prima fattura."}
         </p>
         <Button asChild>
           <Link href="/fatture/nuova">
@@ -51,11 +68,13 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Numero</TableHead>
           <TableHead>Data</TableHead>
+          {isAdmin && <TableHead>Account</TableHead>}
           <TableHead>Cessionario</TableHead>
           <TableHead className="text-right">Importo</TableHead>
           <TableHead>Stato</TableHead>
@@ -70,7 +89,8 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
               </Link>
             </TableCell>
             <TableCell>{formatDate(r.data)}</TableCell>
-            <TableCell>{r.cessionario}</TableCell>
+            {isAdmin && <TableCell>{r.tenantName ?? "-"}</TableCell>}
+            <TableCell>{r.cessionario || "-"}</TableCell>
             <TableCell className="text-right">{formatEuro(r.importoCents)}</TableCell>
             <TableCell>
               <StatusBadge status={r.status} />
@@ -79,6 +99,23 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
         ))}
       </TableBody>
     </Table>
+    {(page > 1 || hasNext) && (
+      <div className="flex justify-between pt-4">
+        {page > 1 ? (
+          <Button asChild variant="outline">
+            <Link href={pageHref(page - 1)}>Precedenti</Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+        {hasNext && (
+          <Button asChild variant="outline">
+            <Link href={pageHref(page + 1)}>Successivi</Link>
+          </Button>
+        )}
+      </div>
+    )}
+    </>
   );
 }
 

@@ -53,7 +53,7 @@ const NAV: NavItem[] = [
   { href: "/ricevute", label: "Fatture ricevute", icon: Inbox },
   { href: "/fatture/nuova", label: "Nuova fattura", icon: FilePlus2 },
   { href: "/stato", label: "Stato canale", icon: Activity },
-  { href: "/audit", label: "Audit", icon: ScrollText },
+  { href: "/audit", label: "Cronologia attività", icon: ScrollText },
   { href: "/api", label: "API", icon: KeyRound },
   { href: "/certificati", label: "Certificati", icon: ShieldCheck, admin: true },
   { href: "/admin/account", label: "Account", icon: Users, admin: true },

@@ -38,7 +38,7 @@ export async function createApiKey(
   db: Db = getPool(),
 ): Promise<{ key: ApiKeyRow; secret: string }> {
   const name = input.name.trim();
-  if (!name) throw new ValidationError("Il nome della chiave e obbligatorio.", "name");
+  if (!name) throw new ValidationError("Il nome della chiave è obbligatorio.", "name");
   const tenantId = effectiveTenant(scope, input.tenantId);
   if (!tenantId) throw new ValidationError("Scegli l'account della chiave.", "tenantId");
   const t = await db.query("select 1 from tenants where id = $1", [tenantId]);

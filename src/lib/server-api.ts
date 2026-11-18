@@ -68,12 +68,17 @@ export interface InvoiceFile {
 export interface NewInvoiceInput {
   tenantId?: string;
   idempotencyKey: string;
-  cessionario: { denominazione: string; partitaIva: string; codiceFiscale?: string };
+  cessionario: {
+    denominazione: string;
+    partitaIva: string;
+    codiceFiscale?: string;
+    sede?: { indirizzo: string; cap: string; comune: string; provincia?: string };
+  };
   destinazione: { tipo: "codice" | "pec"; valore: string };
   tipoDocumento: "TD01" | "TD04";
   formato: "FPR12" | "FPA12";
   data: string;
-  righe: { descrizione: string; quantita: number; prezzoUnitario: number; aliquota: number }[];
+  righe: { descrizione: string; quantita: number; prezzoUnitario: number; aliquota: number; natura?: string }[];
 }
 
 export type CreateInvoiceResult =
@@ -124,7 +129,7 @@ export const destroySession = (token: string): Promise<void> => authModule.destr
 
 export async function listInvoices(
   scope: Scope,
-  filters: { stato?: string; tenantId?: string },
+  filters: { stato?: string; tenantId?: string; q?: string; limit?: number; offset?: number },
 ): Promise<InvoiceRow[]> {
   const rows = await invoiceServiceModule.listInvoices(scope, filters);
   return rows.map(toRow);
@@ -162,6 +167,7 @@ export async function createAndSendInvoice(
     cessionarioDenominazione: input.cessionario.denominazione,
     cessionarioPartitaIva: input.cessionario.partitaIva,
     cessionarioCodiceFiscale: input.cessionario.codiceFiscale,
+    cessionarioSede: input.cessionario.sede,
     destinazione: input.destinazione,
     tipoDocumento: input.tipoDocumento,
     formato: input.formato,
