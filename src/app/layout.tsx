@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Interscambio", template: "%s - Interscambio" },
-  description: "Interscambio: canale telematico SDICoop per la fatturazione elettronica",
+  title: { default: "Janis", template: "%s - Janis" },
+  description: "Janis: canale telematico SDICoop per la fatturazione elettronica",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
