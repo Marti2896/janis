@@ -61,6 +61,7 @@ export default async function RicevutePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">#</TableHead>
                       <TableHead>Data ricezione</TableHead>
                       <TableHead>Fornitore</TableHead>
                       <TableHead>Numero</TableHead>
@@ -71,8 +72,9 @@ export default async function RicevutePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {unassigned.map((r) => (
+                    {unassigned.map((r, i) => (
                       <TableRow key={r.id}>
+                        <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                         <TableCell>{fmtDate(r.receivedAt)}</TableCell>
                         <TableCell>{r.cedenteDenominazione ?? r.cedentePiva ?? "-"}</TableCell>
                         <TableCell>{numeroLabel(r)}</TableCell>
@@ -116,6 +118,7 @@ export default async function RicevutePage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Data ricezione</TableHead>
                     <TableHead>Fornitore</TableHead>
                     {isAdmin && <TableHead>Account</TableHead>}
@@ -126,8 +129,9 @@ export default async function RicevutePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {rows.map((r, i) => (
                     <InvoiceRowLink key={r.id} href={`/ricevute/${r.id}`}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <Link
                           href={`/ricevute/${r.id}`}
