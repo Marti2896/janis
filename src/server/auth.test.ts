@@ -67,7 +67,7 @@ function makeP12(password: string, notAfter: Date): Buffer {
   cert.serialNumber = "01";
   cert.validity.notBefore = new Date(Date.now() - DAY);
   cert.validity.notAfter = notAfter;
-  const attrs = [{ name: "commonName", value: "Test Interscambio" }];
+  const attrs = [{ name: "commonName", value: "Test Janis" }];
   cert.setSubject(attrs);
   cert.setIssuer(attrs);
   cert.sign(keys.privateKey);
