@@ -58,6 +58,8 @@ export type InvoiceEvent = {
   esito: string | null;
   errori: { codice: string; descrizione: string }[] | null;
   source: string | null;
+  /** Notifiche: true se registrata ma senza effetto sullo stato (fuori sequenza). */
+  ignored?: boolean;
 };
 
 export type InvoiceDetail = InvoiceRow & {
@@ -164,8 +166,10 @@ export async function getInvoice(scope: Scope, id: string, opts: Opts = {}): Pro
       [id, x.tenant_id],
     ),
     db.query(
-      `select type, esito, descrizione, errori, message_id, coalesce(sdi_timestamp, received_at) as at, received_at
-         from sdi_notifications where invoice_id = $1 and tenant_id = $2 order by received_at, id`,
+      `select n.type, n.esito, n.descrizione, n.errori, n.message_id, coalesce(n.sdi_timestamp, n.received_at) as at, n.received_at,
+              (exists (select 1 from audit_log a where a.entity = 'sdi_notification' and a.entity_id = n.id::text and a.event = 'notification.incompatible_state')
+               and not exists (select 1 from audit_log a where a.entity = 'sdi_notification' and a.entity_id = n.id::text and a.event = 'notification.applied')) as ignored
+         from sdi_notifications n where n.invoice_id = $1 and n.tenant_id = $2 order by n.received_at, n.id`,
       [id, x.tenant_id],
     ),
   ]);
@@ -194,6 +198,7 @@ export async function getInvoice(scope: Scope, id: string, opts: Opts = {}): Pro
         esito: (n.esito as string | null) ?? null,
         errori: (n.errori as { codice: string; descrizione: string }[] | null) ?? null,
         source: "sdi_notification",
+        ignored: Boolean(n.ignored),
       }),
     ),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());

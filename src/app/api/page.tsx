@@ -25,7 +25,7 @@ export default async function ApiPage() {
   const isAdmin = session.user.role === "admin";
     const [keys, tenants] = await Promise.all([
       listApiKeys(session.scope),
-      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
+      isAdmin ? listTenants(session.scope, undefined, { onlyActive: true }) : Promise.resolve([]),
     ]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">

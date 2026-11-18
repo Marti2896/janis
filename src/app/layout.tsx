@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
+import { ThemeInit } from "@/components/theme-init";
 import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
 
@@ -19,8 +20,6 @@ export const metadata: Metadata = {
   description: "Interscambio: canale telematico SDICoop per la fatturazione elettronica",
 };
 
-const THEME_SCRIPT = `try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark")}}catch(e){}`;
-
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
   return (
@@ -29,10 +28,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
       <body className="min-h-full flex flex-col font-sans">
+        <ThemeInit />
         <AppShell user={user ? { email: user.email, role: user.role, mustChangePassword: user.mustChangePassword } : null}>{children}</AppShell>
       </body>
     </html>

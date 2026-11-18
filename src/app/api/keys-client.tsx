@@ -4,6 +4,16 @@ import { useActionState, useState } from "react";
 import { Copy, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -124,35 +134,36 @@ export function RevokeKeyDialog({ id, name }: { id: string; name: string }) {
     initial,
   );
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
         <Button size="sm" variant="outline">
           Revoca
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <form action={action} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Revocare la chiave?</DialogTitle>
-            <DialogDescription>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <form action={action} className="grid gap-4">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revocare la chiave?</AlertDialogTitle>
+            <AlertDialogDescription>
               La chiave «{name}» smetterà di funzionare subito. L&apos;azione non
               si può annullare.
-            </DialogDescription>
-          </DialogHeader>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <input type="hidden" name="id" value={id} />
           {state.error && (
             <Alert variant="destructive">
               <AlertDescription>{state.error}</AlertDescription>
             </Alert>
           )}
-          <DialogFooter>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Chiudi</AlertDialogCancel>
             <Button type="submit" variant="destructive" disabled={pending}>
               {pending && <Loader2 className="animate-spin" />}
               Revoca chiave
             </Button>
-          </DialogFooter>
+          </AlertDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

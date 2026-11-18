@@ -53,7 +53,7 @@ describe.skipIf(!dbReady)("fatture passive (RicezioneFatture)", () => {
   const admin: Scope = { role: "admin" };
   const pivaA = rnd(11);
   const pivaB = rnd(11);
-  const cfB = `RSSMRA80A01H501${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`;
+  const cfB = `T${Date.now().toString(36).toUpperCase()}${rnd(3)}`;
   let A: Scope;
   let B: Scope;
   let tenantA: string;

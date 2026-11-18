@@ -50,6 +50,10 @@ export interface InvoiceEvent {
   /** Tipo di notifica SdI (RC, NS, MC, NE, DT, SE) per le notifiche. */
   type?: string;
   outcome?: string | null;
+  /** Notifica registrata ma senza effetto sullo stato (arrivata fuori sequenza). */
+  ignored?: boolean;
+  /** Cambio di stato che non coincide con una notifica (es. esito riapplicato dopo la consegna). */
+  standalone?: boolean;
   error?: string | null;
   errors?: { codice: string; descrizione: string }[];
 }
@@ -162,7 +166,9 @@ export async function getInvoiceDetail(scope: Scope, id: string): Promise<Invoic
       label: e.description,
       type: e.kind === "notification" ? e.type : undefined,
       errors: e.errori ?? undefined,
-      outcome: e.esito,
+      outcome: e.ignored ? null : e.esito,
+      ignored: e.ignored ?? false,
+      standalone: e.kind === "status" && e.description.startsWith("Esito già ricevuto"),
       error: e.errori?.length ? e.errori.map((x) => `${x.codice}: ${x.descrizione}`).join("; ") : null,
     })),
   };
@@ -269,7 +275,7 @@ export async function createAndSendInvoice(
 }
 
 export async function listTenants(scope: Scope): Promise<TenantOption[]> {
-  const rows = await tenantsModule.listTenants(scope);
+  const rows = await tenantsModule.listTenants(scope, undefined, { onlyActive: true });
   return rows.map((t) => ({
     id: t.id,
     denominazione: t.denominazione,

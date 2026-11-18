@@ -41,7 +41,7 @@ export default async function RicevutePage() {
     const [rows, unassigned, tenants] = await Promise.all([
       listReceived(session.scope),
       isAdmin ? listUnassigned(session.scope) : Promise.resolve([]),
-      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
+      isAdmin ? listTenants(session.scope, undefined, { onlyActive: true }) : Promise.resolve([]),
     ]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
@@ -61,9 +61,11 @@ export default async function RicevutePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ricevuta il</TableHead>
+                      <TableHead>Data ricezione</TableHead>
                       <TableHead>Fornitore</TableHead>
                       <TableHead>Numero</TableHead>
+                      <TableHead>Importo</TableHead>
+                      <TableHead>Stato</TableHead>
                       <TableHead>Intestata a</TableHead>
                       <TableHead className="text-right">Azione</TableHead>
                     </TableRow>
@@ -74,6 +76,10 @@ export default async function RicevutePage() {
                         <TableCell>{fmtDate(r.receivedAt)}</TableCell>
                         <TableCell>{r.cedenteDenominazione ?? r.cedentePiva ?? "-"}</TableCell>
                         <TableCell>{numeroLabel(r)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{fmtMoney(r.importoTotaleCents)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{receivedLabel(r.stato)}</Badge>
+                        </TableCell>
                         <TableCell>
                           <div className="font-medium">{r.cessionarioDenominazione ?? "-"}</div>
                           {(r.cessionarioPiva ?? r.cessionarioCf) && (

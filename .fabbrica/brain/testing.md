@@ -10,7 +10,7 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 - Variabili: `DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel`, `SDI_ENV`, `SDI_DEMO_TRASMISSIONE_URL` (vuoto = la nuova fattura resta in coda con un avviso, non è un errore), `SDI_RETRY_*`, `SECRETS_MASTER_KEY` (chiave AES-256-GCM per i certificati; in sviluppo la genera il seed in `.env` se manca, mai nel repo).
 - Migrazioni: `npm run db:migrate` applica in ordine `db/migrations/*.sql` (0001, 0002 schema SDICoop, 0006 utenti/sessioni/API key/certificati/canale, 0007 stati estesi, notifiche MC/NE/DT/SE, fatture passive, contatori numerazione, idempotenza API). Tracciate in `schema_migrations`.
 - Seed: `npm run db:seed` (idempotente, vedi sotto).
-- Attenzione `.env`: `scripts/dev.mjs` legge `.env` una sola volta all'avvio e passa quell'ambiente ai figli. Una variabile aggiunta dopo (es. `SECRETS_MASTER_KEY` scritta dal seed) NON arriva all'API finché la preview non viene riavviata, anche se `--watch` riavvia il processo Fastify. Sintomo: POST fatture risponde 500 «SECRETS_MASTER_KEY non configurata». Run #406: preview partita alle 09:14, chiave scritta alle 09:44. Correzione in corso (issue #85): `server/index.ts` carica `.env` da sé all'avvio.
+- Attenzione `.env`: `scripts/dev.mjs` legge `.env` una sola volta all'avvio e passa quell'ambiente ai figli. Una variabile aggiunta dopo (es. `SECRETS_MASTER_KEY` scritta dal seed) NON arriva all'API finché la preview non viene riavviata, anche se `--watch` riavvia il processo Fastify. Sintomo: POST fatture risponde 500 «SECRETS_MASTER_KEY non configurata». Nella run #406 è successo due volte (preview riavviata alle 12:35 ancora senza la chiave, issue #115). Correzione assegnata al builder (triage it.15, #115): `server/index.ts` deve caricare `.env` da sé e riempire anche le variabili vuote. Finché non è fatta: se una POST fattura risponde 500 «SECRETS_MASTER_KEY non configurata», il QA NON riavvia la preview e apre UNA sola issue question per l'orchestratore.
 - Dev server: `npm run dev` avvia web (Next 16) e API (Fastify) con `WEB_PORT=4810` e `API_PORT=4811`. Gli agenti NON lo avviano a mano: la preview è dell'infrastruttura e gira con `SDI_ENV=demo`. Se serve un riavvio (es. dopo una migrazione o una nuova dipendenza), scriverlo nel summary.
 - URL: web http://127.0.0.1:4810, API http://127.0.0.1:4811 (`/health`, `/api/v1/health`).
 - Controllo rapido: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4810/login` = 200; `/fatture` senza cookie = 307 verso /login; `curl http://127.0.0.1:4811/health` = 200.
@@ -69,7 +69,7 @@ npm run --silent sdi:notifica-demo -- --tipo RC --id <sdi_identifier> --nome-fil
 curl -i -X POST http://127.0.0.1:4811/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data-binary @/tmp/n.xml
 ```
 Tipi: `RC`, `NS` (`--errore 00200:"File non conforme"`), `MC`, `NE` (`--esito EC01|EC02`), `DT`, `SE` (`--esito EN00|EN01`).
-Atteso: 200 e stato aggiornato; ripetendo la stessa notifica nessun nuovo storico. Transizioni: MC solo dopo inviata, NE e DT solo dopo consegnata; fuori sequenza = registrata in timeline senza regressione di stato. SE si registra sulla fattura ricevuta. XML non valido = 500 SOAP Fault, stato invariato. Rimuovi i file in /tmp a fine prova.
+Atteso: 200 e stato aggiornato; ripetendo la stessa notifica nessun nuovo storico. Transizioni: MC solo dopo inviata, NE e DT solo dopo consegnata; fuori sequenza = registrata in timeline come «ignorata» (mai con l'etichetta dell'esito applicato) senza regressione di stato. Dopo il fix di #114: una NE o DT arrivata su una fattura inviata ma non ancora consegnata resta in attesa e viene applicata quando arriva la RC (storico: consegnata, poi accettata/rifiutata/termini scaduti); ogni cambio di stato da NE e DT compare nello storico; una seconda NE dopo un esito definitivo compare in timeline come ignorata. SE si registra sulla fattura ricevuta. XML non valido = 500 SOAP Fault, stato invariato. Rimuovi i file in /tmp a fine prova.
 
 ### Caso SDI_ENV=production
 Non si prova sulla preview (gira in demo, non va riconfigurata). Coperto da test Vitest con `app.inject` e `sdiEnv: 'production'`: atteso Fault 500 e zero query.
@@ -117,3 +117,22 @@ Notifiche: `npm run --silent sdi:notifica-demo -- --tipo <T> --id <sdi_identifie
 - Skeleton e Alert «Riprova»: con dati locali il caricamento è troppo veloce e un mock di rete non basta (sono server component). Si verificano leggendo `loading.tsx` ed `error.tsx` della pagina: se esistono e usano Skeleton e Alert con Riprova, il criterio passa per ispezione del codice (annotarlo nel report).
 
 Test dello script: `DATABASE_URL=... npx vitest run src/server/qa-invoice.test.ts src/server/passive.test.ts`.
+
+### Fatture passive di prova
+POST `http://127.0.0.1:4811/sdi/ricezione/ricezione-fatture` con busta RiceviFatture costruita da `buildDemoReceivedInvoiceSoap` (`src/sdi/messaggi/demo-notification.ts`) e XML da `buildFatturaXml` (`src/sdi/fatturapa/build.ts`). Cessionario con P.IVA di un tenant = assegnata a quel tenant; solo codice fiscale = assegnata tramite CF; nessuna corrispondenza = non assegnata (solo admin). Notifica SE: `sdi:notifica-demo --tipo SE --id <IdentificativoSdI> --nome-file <nome> --esito EN00|EN01`, poi POST su `/sdi/ricezione/trasmissione-fatture`.
+
+### Criteri verificati per ispezione o test (decisioni triage it.15)
+- Errore XSD di Nuova fattura (#108): la validazione dei campi blocca prima tutti gli input che l'utente può scrivere, quindi un errore XSD reale non si provoca dalla UI. Il criterio si verifica con il test Vitest che il builder aggiunge (errore `_xsd` con percorso del campo restituito dal servizio e mostrato nell'Alert del form) e leggendo il componente del form. Non forzare XSD o DB per provocarlo.
+- Filtro «Firmata» (#113, cancellata): una fattura firmata e non ancora inviata è mostrata come «In coda» (decisione #63, gruppo draft/signed/sending). Il filtro Stato quindi NON ha la voce Firmata: è voluto, non è un bug.
+- Audit del canale con valori prima e dopo (#112): usare la procedura descritta sopra (endpoint di prova `http://127.0.0.1:9/qa-audit`, poi ripristino immediato del valore vuoto). È autorizzata e non disturba le altre corsie se il ripristino avviene subito.
+
+### Account creati dal QA nella run #406 (solo sviluppo)
+| Email | Password attuale | Tenant | Note |
+|---|---|---|---|
+| qa1-c1.attivo@interscambio.test | Qa1-attivo-nota-2026 | qa1-c1 Tenant Attivo (55500000011) | password già cambiata; 5 errori lo bloccano 15 minuti |
+| qa1-c1.disattivato@interscambio.test | - | qa1-c1 Tenant Disattivato (55500000022) | disattivato, serve per il messaggio generico |
+| qa4.cliente@interscambio.test | Cliente-qa4-2026!x | qa4 Cliente Test (55555555555, CF QA4CFTEST0000001) | fatture ricevute di prova |
+| qa4.vuoto@interscambio.test | Vuoto-qa4-2026!x | qa4 Cliente Vuoto (44444444444) | nessuna fattura ricevuta (stato vuoto) |
+
+Chiavi API lasciate dalla corsia 6: qa6-alfa-copia e qa6-alfa-file (attive, Alfa), qa6-alfa-nuova e qa6-beta-api (revocate). Per un nuovo utente: /admin/account, «Nuovo account» (password temporanea mostrata una volta; chiudere il dialog con Escape o ricaricando).
+- Nota: il selettore Account di /audit e /fatture elenca anche molti tenant creati dai test automatici (Lock, Passive, T, Test...). Pulizia in corso (issue di triage it.15); intanto ignorarli.

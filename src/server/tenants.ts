@@ -41,10 +41,12 @@ const map = (x: Record<string, unknown>): TenantRow => ({
 });
 
 /** Admin: tutti i tenant. Cliente: solo il proprio. */
-export async function listTenants(scope: Scope, db: Db = getPool()): Promise<TenantRow[]> {
+export async function listTenants(scope: Scope, db: Db = getPool(), opts: { onlyActive?: boolean } = {}): Promise<TenantRow[]> {
+  // Attivo = almeno un utente non disattivato: i selettori non mostrano account senza accesso (dati di prova, dismessi).
+  const active = opts.onlyActive ? `where exists (select 1 from users u where u.tenant_id = t.id and u.disabled_at is null)` : "";
   const r =
     scope.role === "admin"
-      ? await db.query(`${SELECT} order by t.denominazione`)
+      ? await db.query(`${SELECT} ${active} order by lower(t.denominazione), t.id`)
       : await db.query(`${SELECT} where t.id = $1`, [scope.tenantId]);
   return r.rows.map(map);
 }

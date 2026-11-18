@@ -141,6 +141,9 @@ export async function parseNotification(soapXml: string): Promise<ParsedNotifica
   };
 }
 
+/** Prefisso della causale quando un esito già ricevuto viene applicato dopo la consegna. */
+export const REAPPLIED_PREFIX = "Esito già ricevuto, applicato dopo la consegna: ";
+
 export type ProcessResult = "applied" | "duplicate" | "unknown_invoice" | "incompatible_state";
 
 /** Stati da cui la notifica e accettata. Una notifica fuori sequenza si registra ma non fa regredire lo stato. */
@@ -279,6 +282,33 @@ export async function processNotification(pool: pg.Pool, n: ParsedNotification):
         );
         await audit("notification.applied", { from: inv.status, to });
         result = "applied";
+
+        // Dopo la consegna si riapplicano gli esiti NE/DT arrivati prima (registrati ma fuori sequenza).
+        if (n.type === "RC") {
+          const early = await client.query(
+            `select id, type, esito, descrizione, sdi_timestamp, message_id from sdi_notifications
+              where invoice_id = $1 and type in ('NE', 'DT') and id <> $2
+              order by coalesce(sdi_timestamp, received_at), id`,
+            [inv.id, ins.rows[0].id],
+          );
+          let current = to;
+          for (const row of early.rows) {
+            const pn = { type: row.type, esito: row.esito, descrizione: row.descrizione, sdiTimestamp: row.sdi_timestamp } as ParsedNotification;
+            const next = targetStatus(pn);
+            if (!next || !ACCEPTED_FROM[pn.type as Exclude<NotificationType, "SE">].includes(current)) continue;
+            await client.query("update invoices set status = $2, updated_at = now() where id = $1", [inv.id, next]);
+            await client.query(
+              `insert into invoice_status_history (invoice_id, tenant_id, from_status, to_status, causale, sdi_timestamp, source)
+               values ($1, $2, $3, $4, $5, $6, 'sdi_notification')`,
+              [inv.id, inv.tenant_id, current, next, `${REAPPLIED_PREFIX}${causaleFor(pn)}`, row.sdi_timestamp],
+            );
+            await client.query(
+              `insert into audit_log (tenant_id, event, entity, entity_id, detail) values ($1, 'notification.applied', 'sdi_notification', $2, $3)`,
+              [tenantId, String(row.id), JSON.stringify({ type: row.type, from: current, to: next, reapplied: true })],
+            );
+            current = next;
+          }
+        }
       }
     }
     await client.query("commit");

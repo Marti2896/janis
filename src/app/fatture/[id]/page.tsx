@@ -44,7 +44,7 @@ export default async function InvoiceDetailPage({
   // Una notifica e il cambio di stato che provoca arrivano nello stesso istante: si mostra una sola voce.
   const notifTimes = invoice.events.filter((e) => e.kind === "notifica").map((e) => new Date(e.at).getTime());
   const events = invoice.events.filter(
-    (e) => e.kind !== "stato" || !notifTimes.some((t) => Math.abs(t - new Date(e.at).getTime()) <= 2000),
+    (e) => e.kind !== "stato" || e.standalone || !notifTimes.some((t) => Math.abs(t - new Date(e.at).getTime()) <= 2000),
   );
   const guidance = STATUS_GUIDANCE[invoice.status];
   return (
@@ -147,6 +147,9 @@ export default async function InvoiceDetailPage({
                     {e.label && <span className="font-medium">{eventLabel(e.label)}</span>}
                   </div>
                   <time className="text-sm text-muted-foreground">{formatDateTime(e.at)}</time>
+                  {e.ignored && (
+                    <p className="text-sm text-muted-foreground">Registrata: arrivata prima della consegna, lo stato non cambia.</p>
+                  )}
                   {outcomeLabel(e.outcome) && <p className="text-sm">{outcomeLabel(e.outcome)}</p>}
                   {e.errors?.length ? (
                     <ul className="flex flex-col gap-1 text-sm">
