@@ -102,6 +102,43 @@ Fatto quando:
 - Un errore di rete esaurito porta a send_unknown senza retry automatico
 - Un secondo invio con lo stesso NomeFile non chiama l'endpoint
 
+## Navigare nell'app con la sidebar a gruppi (restyling-navigazione-palette)
+Il cliente o l'admin passa da una sidebar a gruppi (desktop) o da un menu a scomparsa (mobile) alle pagine operative e admin.
+Attori: cliente, admin
+- [inizio] Apre l'area autenticata · utente
+  Login gia fatto, con sessione valida
+- [decisione] Schermo sopra o sotto 768px? · sistema
+  Decide la forma della navigazione
+- [sistema] Mostra la sidebar fissa a sinistra · sistema
+  Gruppi Fatture, Canale, Audit; Amministrazione solo per admin
+- [sistema] Mostra la barra con Apri il menu · sistema
+  Il menu si apre da sinistra con gli stessi gruppi
+- [azione] Sceglie una voce · utente
+  Clic su una voce del menu
+- [sistema] Apre la pagina e marca la voce attiva · sistema
+  Il menu mobile si chiude; la voce attiva e blu
+- [decisione] Utente admin? · sistema
+  Solo admin vede il gruppo Amministrazione
+- [uscita] Nessun gruppo Amministrazione · sistema
+  Il cliente che apre /admin/account riceve Accesso negato
+- [fine] Pagina operativa con colonna # · utente
+  Contenuto largo fino a 1280px e tabelle numerate
+- Apre l'area autenticata → Schermo sopra o sotto 768px?
+- Schermo sopra o sotto 768px? → Mostra la sidebar fissa a sinistra (desktop)
+- Schermo sopra o sotto 768px? ⇢ Mostra la barra con Apri il menu (mobile)
+- Mostra la sidebar fissa a sinistra → Sceglie una voce (clic voce)
+- Mostra la barra con Apri il menu → Sceglie una voce (scelta voce)
+- Sceglie una voce → Apre la pagina e marca la voce attiva (naviga)
+- Apre la pagina e marca la voce attiva → Utente admin? (controllo ruolo)
+- Utente admin? ↯ Nessun gruppo Amministrazione (cliente)
+- Utente admin? → Pagina operativa con colonna # (admin vede gruppo)
+
+Fatto quando:
+- Il cliente vede tre gruppi senza Amministrazione
+- L'admin vede anche il gruppo Amministrazione separato
+- Su mobile il menu si apre e si chiude e una voce chiude il menu
+- La voce attiva resta evidenziata dopo il reload
+
 ## Ricevere gli esiti SdI su una fattura inviata (ricezione-notifiche-sdi)
 SdI chiama l'endpoint con RC o NS; il sistema registra la notifica e aggiorna lo stato della fattura una sola volta.
 Attori: SdI demo, sistema di ricezione

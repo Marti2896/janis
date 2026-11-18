@@ -376,6 +376,10 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
         <CardContent className="flex flex-col gap-6">
           {rows.map((row, i) => (
             <div key={row.id} className="grid gap-4 border-b pb-6 last:border-b-0 last:pb-0 sm:grid-cols-6">
+              <p className="text-sm font-medium text-muted-foreground tabular-nums sm:col-span-6">
+                <span aria-hidden="true"># </span>
+                <span aria-label={`Riga ${i + 1}`}>{i + 1}</span>
+              </p>
               <div className="flex flex-col gap-2 sm:col-span-6">
                 <Label htmlFor={`desc-${row.id}`}>Descrizione</Label>
                 <Input id={`desc-${row.id}`} name={`righe.${i}.descrizione`} defaultValue={row.descrizione} aria-invalid={e[`righe.${i}.descrizione`] ? true : undefined} />
@@ -522,6 +526,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">#</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">Prezzo</TableHead>
@@ -531,6 +536,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
               <TableBody>
                 {summaryRows.map((r, i) => (
                   <TableRow key={i}>
+                    <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                     <TableCell>{r.descrizione}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{r.quantita}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{eur.format(parseNum(r.prezzo))}</TableCell>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function FattureError({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-6 py-16">
+    <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-4 px-6 py-10 lg:px-10">
       <Alert variant="destructive">
         <AlertCircle />
         <AlertTitle>Impossibile caricare le fatture</AlertTitle>

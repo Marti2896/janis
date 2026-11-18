@@ -83,6 +83,7 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-12">#</TableHead>
           <TableHead>Numero</TableHead>
           <TableHead>Data</TableHead>
           {isAdmin && <TableHead>Account</TableHead>}
@@ -92,8 +93,11 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((r) => (
+        {rows.map((r, i) => (
           <InvoiceRowLink key={r.id} href={`/fatture/${r.id}`}>
+            <TableCell className="w-12 text-muted-foreground tabular-nums">
+              {(page - 1) * PAGE_SIZE + i + 1}
+            </TableCell>
             <TableCell className="font-medium">
               <Link href={`/fatture/${r.id}`} className="underline-offset-4 hover:underline">
                 {r.numero}
@@ -136,7 +140,7 @@ export default async function FatturePage({ searchParams }: { searchParams: Sear
   const key = JSON.stringify(await searchParams);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 px-6 py-10 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">Fatture emesse</h1>
         <Button asChild>

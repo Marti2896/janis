@@ -60,7 +60,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
   ];
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 px-6 py-10 lg:px-10">
       <Button asChild variant="ghost" className="w-fit">
         <Link href="/ricevute">
           <ArrowLeft />
@@ -136,6 +136,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-12">#</TableHead>
                           <TableHead>Descrizione</TableHead>
                           <TableHead className="text-right">Quantità</TableHead>
                           <TableHead className="text-right">Prezzo</TableHead>
@@ -144,8 +145,9 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {d.righe.map((riga) => (
+                        {d.righe.map((riga, i) => (
                           <TableRow key={riga.numero}>
+                            <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                             <TableCell>{riga.descrizione}</TableCell>
                             <TableCell className="whitespace-nowrap text-right">{qty(riga.quantita)}</TableCell>
                             <TableCell className="whitespace-nowrap text-right">{money(riga.prezzoUnitarioCents)}</TableCell>
@@ -170,6 +172,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-12">#</TableHead>
                           <TableHead>Aliquota</TableHead>
                           <TableHead className="text-right">Imponibile</TableHead>
                           <TableHead className="text-right">Imposta</TableHead>
@@ -178,6 +181,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                       <TableBody>
                         {d.riepilogo.map((x, k) => (
                           <TableRow key={k}>
+                            <TableCell className="w-12 text-muted-foreground tabular-nums">{k + 1}</TableCell>
                             <TableCell>{x.aliquota ? `${x.aliquota.toLocaleString("it-IT")}%` : (x.natura ?? "0%")}</TableCell>
                             <TableCell className="whitespace-nowrap text-right">{money(x.imponibileCents)}</TableCell>
                             <TableCell className="whitespace-nowrap text-right">{money(x.impostaCents)}</TableCell>
@@ -200,6 +204,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-12">#</TableHead>
                             <TableHead>Modalità</TableHead>
                             <TableHead>Scadenza</TableHead>
                             <TableHead className="text-right">Importo</TableHead>
@@ -209,6 +214,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                         <TableBody>
                           {d.pagamenti.map((p, k) => (
                             <TableRow key={k}>
+                              <TableCell className="w-12 text-muted-foreground tabular-nums">{k + 1}</TableCell>
                               <TableCell>{(p.modalita && MODALITA_PAGAMENTO[p.modalita]) ?? p.modalita ?? "-"}</TableCell>
                               <TableCell className="whitespace-nowrap">{formatDateShort(p.scadenza)}</TableCell>
                               <TableCell className="whitespace-nowrap text-right">{money(p.importoCents)}</TableCell>
@@ -236,6 +242,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Data e ora</TableHead>
                     <TableHead>Comunicazione</TableHead>
                   </TableRow>
@@ -243,6 +250,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                 <TableBody>
                   {r.notifications.map((n, k) => (
                     <TableRow key={k}>
+                      <TableCell className="w-12 align-top text-muted-foreground tabular-nums">{k + 1}</TableCell>
                       <TableCell className="whitespace-nowrap align-top">{formatDateTime(n.at)}</TableCell>
                       <TableCell>
                         <p>

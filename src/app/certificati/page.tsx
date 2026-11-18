@@ -28,7 +28,7 @@ export default async function CertificatiPage() {
   if (session.user.role !== "admin") forbidden();
     const certs = await listCertificates(session.scope);
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Certificati</h1>
           <UploadDialog />
@@ -43,6 +43,7 @@ export default async function CertificatiPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Soggetto</TableHead>
                     <TableHead>Emittente</TableHead>
                     <TableHead>Ambiente</TableHead>
@@ -51,8 +52,9 @@ export default async function CertificatiPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {certs.map((c) => (
+                  {certs.map((c, i) => (
                     <TableRow key={c.id}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                       <TableCell title={c.subject}>{commonName(c.subject)}</TableCell>
                       <TableCell title={c.issuer}>{commonName(c.issuer)}</TableCell>
                       <TableCell>{c.environment}</TableCell>
@@ -61,7 +63,7 @@ export default async function CertificatiPage() {
                       </TableCell>
                       <TableCell>
                         {certificateLevel(c.notAfter) === "ok" ? (
-                          <Badge variant="success">Valido</Badge>
+                          <Badge variant="success-soft">Valido</Badge>
                         ) : (
                           <CertificateBadge notAfter={c.notAfter} />
                         )}

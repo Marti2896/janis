@@ -69,7 +69,7 @@ export default async function AuditPage({
     };
     const tenantName = (id: string) => tenants.find((t) => t.id === id)?.denominazione ?? "Account";
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <h1 className="text-2xl font-semibold">Cronologia attività</h1>
         <form method="get" className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">
@@ -124,6 +124,7 @@ export default async function AuditPage({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Data e ora</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Azione</TableHead>
@@ -132,8 +133,11 @@ export default async function AuditPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {shown.map((r) => (
+                  {shown.map((r, i) => (
                     <TableRow key={r.id}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">
+                        {(page - 1) * PAGE_SIZE + i + 1}
+                      </TableCell>
                       <TableCell>
                         {new Date(r.createdAt).toLocaleString("it-IT")}
                       </TableCell>

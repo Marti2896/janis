@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "slug": "restyling-navigazione-palette",
+  "title": "Navigare nell'app con la sidebar a gruppi",
+  "summary": "Il cliente o l'admin passa da una sidebar a gruppi (desktop) o da un menu a scomparsa (mobile) alle pagine operative e admin.",
+  "actors": [
+    "cliente",
+    "admin"
+  ],
+  "acceptance": [
+    "Il cliente vede tre gruppi senza Amministrazione",
+    "L'admin vede anche il gruppo Amministrazione separato",
+    "Su mobile il menu si apre e si chiude e una voce chiude il menu",
+    "La voce attiva resta evidenziata dopo il reload"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "Apre l'area autenticata",
+      "detail": "Login gia fatto, con sessione valida",
+      "actor": "utente",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "decisione",
+      "title": "Schermo sopra o sotto 768px?",
+      "detail": "Decide la forma della navigazione",
+      "actor": "sistema",
+      "media": [],
+      "x": 430,
+      "y": 160
+    },
+    {
+      "id": "n3",
+      "kind": "sistema",
+      "title": "Mostra la sidebar fissa a sinistra",
+      "detail": "Gruppi Fatture, Canale, Audit; Amministrazione solo per admin",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 197
+    },
+    {
+      "id": "n4",
+      "kind": "sistema",
+      "title": "Mostra la barra con Apri il menu",
+      "detail": "Il menu si apre da sinistra con gli stessi gruppi",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 505
+    },
+    {
+      "id": "n5",
+      "kind": "azione",
+      "title": "Sceglie una voce",
+      "detail": "Clic su una voce del menu",
+      "actor": "utente",
+      "media": [],
+      "x": 1130,
+      "y": 197
+    },
+    {
+      "id": "n6",
+      "kind": "sistema",
+      "title": "Apre la pagina e marca la voce attiva",
+      "detail": "Il menu mobile si chiude; la voce attiva e blu",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 197
+    },
+    {
+      "id": "n7",
+      "kind": "decisione",
+      "title": "Utente admin?",
+      "detail": "Solo admin vede il gruppo Amministrazione",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 160
+    },
+    {
+      "id": "n8",
+      "kind": "uscita",
+      "title": "Nessun gruppo Amministrazione",
+      "detail": "Il cliente che apre /admin/account riceve Accesso negato",
+      "actor": "sistema",
+      "media": [],
+      "x": 2180,
+      "y": 524
+    },
+    {
+      "id": "n9",
+      "kind": "fine",
+      "title": "Pagina operativa con colonna #",
+      "detail": "Contenuto largo fino a 1280px e tabelle numerate",
+      "actor": "utente",
+      "media": [],
+      "x": 2180,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "desktop",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n2",
+      "to": "n4",
+      "label": "mobile",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e4",
+      "from": "n3",
+      "to": "n5",
+      "label": "clic voce",
+      "kind": "ok"
+    },
+    {
+      "id": "e5",
+      "from": "n4",
+      "to": "n5",
+      "label": "scelta voce",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n5",
+      "to": "n6",
+      "label": "naviga",
+      "kind": "ok"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n7",
+      "label": "controllo ruolo",
+      "kind": "ok"
+    },
+    {
+      "id": "e8",
+      "from": "n7",
+      "to": "n8",
+      "label": "cliente",
+      "kind": "errore"
+    },
+    {
+      "id": "e9",
+      "from": "n7",
+      "to": "n9",
+      "label": "admin vede gruppo",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-18T15:27:31.586Z",
+  "updated_at": "2026-11-18T15:27:31.586Z",
+  "updated_by": "run #421 · spec",
+  "layout_version": 4
+}
