@@ -86,6 +86,8 @@ export function outcomeLabel(code: string | null | undefined): string | null {
 
 const LABELS: [string, string][] = [
   ["XML validato e firmato CAdES-BES", "File controllato e firmato digitalmente"],
+  ["Notifica esito committente", "Risposta del cliente"],
+  ["Scarto dell'esito committente", "Risposta del cliente non accettata dal Sistema di Interscambio"],
 ];
 
 export function eventLabel(label: string): string {

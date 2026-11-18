@@ -123,7 +123,8 @@ POST `http://127.0.0.1:4811/sdi/ricezione/ricezione-fatture` con busta RiceviFat
 
 ### Criteri verificati per ispezione o test (decisioni triage it.15)
 - Errore XSD di Nuova fattura (#108): la validazione dei campi blocca prima tutti gli input che l'utente può scrivere, quindi un errore XSD reale non si provoca dalla UI. Il criterio si verifica con il test Vitest che il builder aggiunge (errore `_xsd` con percorso del campo restituito dal servizio e mostrato nell'Alert del form) e leggendo il componente del form. Non forzare XSD o DB per provocarlo.
-- Filtro «Firmata» (#113, cancellata): una fattura firmata e non ancora inviata è mostrata come «In coda» (decisione #63, gruppo draft/signed/sending). Il filtro Stato quindi NON ha la voce Firmata: è voluto, non è un bug.
+- Flusso Nuova fattura: «Crea e invia» prima valida i campi sul server (validateInvoiceAction), poi apre il Dialog «Controlla prima di inviare»; la fattura si crea solo premendo la conferma nel Dialog (createInvoiceAction, «Invio in corso…»). Nel report di un fallimento indicare se il Dialog è comparso.
+- Filtro «Firmata» (#113, #119 e #125, cancellate): una fattura firmata e non ancora inviata è mostrata come «In coda» (decisione #63, gruppo draft/signed/sending). Il filtro Stato quindi NON ha la voce Firmata: è voluto, non è un bug.
 - Audit del canale con valori prima e dopo (#112): usare la procedura descritta sopra (endpoint di prova `http://127.0.0.1:9/qa-audit`, poi ripristino immediato del valore vuoto). È autorizzata e non disturba le altre corsie se il ripristino avviene subito.
 
 ### Account creati dal QA nella run #406 (solo sviluppo)
@@ -134,6 +135,7 @@ POST `http://127.0.0.1:4811/sdi/ricezione/ricezione-fatture` con busta RiceviFat
 | qa4.cliente@interscambio.test | Cliente-qa4-2026!x | qa4 Cliente Test (55555555555, CF QA4CFTEST0000001) | fatture ricevute di prova |
 | qa4.vuoto@interscambio.test | Vuoto-qa4-2026!x | qa4 Cliente Vuoto (44444444444) | nessuna fattura ricevuta (stato vuoto) |
 | qa2-c2.vuoto@interscambio.test | Qa2-cliente-nota-2026! | qa2-c2 Tenant Vuoto (66600000011) | nessuna fattura emessa (stato vuoto) |
+| qa5.primo@interscambio.test | temporanea ccZrypRXcXD7UaQp (da cambiare al primo accesso) | qa5 Azienda Prova (55566677799) | usato per reset password e disattivazione |
 
 Chiavi API lasciate dalla corsia 6: qa6-alfa-copia e qa6-alfa-file (attive, Alfa), qa6-alfa-nuova e qa6-beta-api (revocate). Per un nuovo utente: /admin/account, «Nuovo account» (password temporanea mostrata una volta; chiudere il dialog con Escape o ricaricando).
 - Nota: il selettore Account di /audit e /fatture elenca anche molti tenant creati dai test automatici (Lock, Passive, T, Test...). Pulizia in corso (#117); intanto ignorarli.
