@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CanaleForm } from "./canale-form";
 
-export const dynamic = "force-dynamic";
 
 export default async function CanalePage() {
   const session = await requireSession();
@@ -21,14 +20,12 @@ export default async function CanalePage() {
       </main>
     );
   }
-  try {
     const [settings, certs] = await Promise.all([
       getChannelSettings(),
-      listCertificates(),
+      listCertificates(session.scope),
     ]);
-    const now = Date.now();
     const hasValidProdCert = certs.some(
-      (c) => c.environment === "production" && new Date(c.notAfter).getTime() > now,
+      (c) => c.environment === "production" && c.level !== "expired",
     );
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
@@ -47,16 +44,4 @@ export default async function CanalePage() {
         </Card>
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile caricare la configurazione. Ricarica la pagina.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

@@ -3,10 +3,8 @@ import { requireSession } from "@/lib/session";
 import { channelCounters } from "@/server/invoice-service";
 import { getChannelSettings } from "@/server/channel-settings";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const dynamic = "force-dynamic";
 
 async function checkHealth(): Promise<boolean> {
   const port = process.env.API_PORT ?? process.env.PORT_API ?? "4811";
@@ -24,7 +22,6 @@ async function checkHealth(): Promise<boolean> {
 export default async function StatoPage() {
   const session = await requireSession();
   const isAdmin = session.user.role === "admin";
-  try {
     const [counters, settings, healthy] = await Promise.all([
       channelCounters(session.scope),
       getChannelSettings(),
@@ -88,7 +85,7 @@ export default async function StatoPage() {
             ) : (
               <ul className="space-y-2 text-sm">
                 {counters.recentErrors.map((e) => (
-                  <li key={e.id} className="flex justify-between gap-4">
+                  <li key={`${e.invoiceId}-${String(e.at)}`} className="flex justify-between gap-4">
                     <span>{e.message}</span>
                     <span className="shrink-0 text-muted-foreground">
                       {new Date(e.at).toLocaleString("it-IT")}
@@ -101,16 +98,4 @@ export default async function StatoPage() {
         </Card>
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile leggere lo stato del canale. Ricarica la pagina.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

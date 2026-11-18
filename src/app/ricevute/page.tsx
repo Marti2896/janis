@@ -5,7 +5,6 @@ import { listReceived, listUnassigned } from "@/server/invoice-service";
 import { listTenants } from "@/server/tenants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -16,23 +15,21 @@ import {
 } from "@/components/ui/table";
 import { AssignDialog } from "./assign-dialog";
 
-export const dynamic = "force-dynamic";
 
 const fmtDate = (d: Date | string) =>
   new Date(d).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
-const fmtMoney = (v: number | string | null) =>
+const fmtMoney = (v: number | null) =>
   v == null
     ? "-"
-    : Number(v).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+    : (v / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
 
 export default async function RicevutePage() {
   const session = await requireSession();
   const isAdmin = session.user.role === "admin";
-  try {
     const [rows, unassigned, tenants] = await Promise.all([
       listReceived(session.scope),
       isAdmin ? listUnassigned(session.scope) : Promise.resolve([]),
-      isAdmin ? listTenants() : Promise.resolve([]),
+      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
     ]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
@@ -113,7 +110,7 @@ export default async function RicevutePage() {
                       </TableCell>
                       <TableCell>{r.cedentePiva}</TableCell>
                       <TableCell>{r.numero ?? "-"}</TableCell>
-                      <TableCell>{fmtMoney(r.importo)}</TableCell>
+                      <TableCell>{fmtMoney(r.importoCents)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{r.stato}</Badge>
                       </TableCell>
@@ -126,17 +123,4 @@ export default async function RicevutePage() {
         </Card>
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile caricare le fatture ricevute. Ricarica la pagina per
-            riprovare.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

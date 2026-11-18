@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { NewAccountDialog, UserActions } from "./account-client";
 
-export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const session = await requireSession();
@@ -30,8 +29,7 @@ export default async function AccountPage() {
       </main>
     );
   }
-  try {
-    const [tenants, users] = await Promise.all([listTenants(), listUsers()]);
+    const [tenants, users] = await Promise.all([listTenants(session.scope), listUsers(session.scope)]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <div className="flex items-center justify-between gap-4">
@@ -68,15 +66,15 @@ export default async function AccountPage() {
                       <TableRow key={u.id}>
                         <TableCell>{u.email}</TableCell>
                         <TableCell>
-                          <Badge variant={u.disabledAt ? "destructive" : "secondary"}>
-                            {u.disabledAt ? "Disattivato" : "Attivo"}
+                          <Badge variant={u.disabled ? "destructive" : "secondary"}>
+                            {u.disabled ? "Disattivato" : "Attivo"}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <UserActions
                             userId={u.id}
                             email={u.email}
-                            disabled={!!u.disabledAt}
+                            disabled={u.disabled}
                           />
                         </TableCell>
                       </TableRow>
@@ -89,16 +87,4 @@ export default async function AccountPage() {
         })}
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile caricare gli account. Ricarica la pagina.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

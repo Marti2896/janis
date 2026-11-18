@@ -1,7 +1,6 @@
 import { requireSession } from "@/lib/session";
 import { listApiKeys } from "@/server/api-keys";
 import { listTenants } from "@/server/tenants";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -14,7 +13,6 @@ import {
 } from "@/components/ui/table";
 import { NewKeyDialog, RevokeKeyDialog } from "./keys-client";
 
-export const dynamic = "force-dynamic";
 
 const fmt = (d: Date | string | null) =>
   d ? new Date(d).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "mai";
@@ -22,10 +20,9 @@ const fmt = (d: Date | string | null) =>
 export default async function ApiPage() {
   const session = await requireSession();
   const isAdmin = session.user.role === "admin";
-  try {
     const [keys, tenants] = await Promise.all([
       listApiKeys(session.scope),
-      isAdmin ? listTenants() : Promise.resolve([]),
+      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
     ]);
     return (
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
@@ -72,12 +69,12 @@ export default async function ApiPage() {
                       <TableCell>{fmt(k.createdAt)}</TableCell>
                       <TableCell>{fmt(k.lastUsedAt)}</TableCell>
                       <TableCell>
-                        <Badge variant={k.revokedAt ? "destructive" : "secondary"}>
-                          {k.revokedAt ? "Revocata" : "Attiva"}
+                        <Badge variant={k.revoked ? "destructive" : "secondary"}>
+                          {k.revoked ? "Revocata" : "Attiva"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {!k.revokedAt && <RevokeKeyDialog id={k.id} name={k.name} />}
+                        {!k.revoked && <RevokeKeyDialog id={k.id} name={k.name} />}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -88,16 +85,4 @@ export default async function ApiPage() {
         </Card>
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile caricare le chiavi API. Ricarica la pagina.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

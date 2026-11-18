@@ -6,7 +6,7 @@ import { authenticate, changePassword, destroySession, getSession } from "./auth
 import { expiryLevel, addCertificate, getActiveCertificate, hasValidCertificate } from "./certificates.ts";
 import { getChannelSettings, saveChannelSettings } from "./channel-settings.ts";
 import { generateTemporaryPassword, hashPassword, verifyPassword } from "./password.ts";
-import { createDbSecretStore, decryptSecret, encryptSecret } from "./secrets.ts";
+import { createDbSecretStore, decryptSecret, encryptSecret, loadMasterKey } from "./secrets.ts";
 import { createTenant } from "./tenants.ts";
 import { resetPassword, setUserDisabled } from "./users.ts";
 
@@ -170,7 +170,7 @@ describe.skipIf(!dbReady)("login e sessioni con Postgres", () => {
 
 describe.skipIf(!dbReady)("certificati e configurazione canale con Postgres", () => {
   const admin = { role: "admin" } as const;
-  const key = randomBytes(32);
+  const key = loadMasterKey();
   const store = () => createDbSecretStore(pool, key);
   let snapshot: { key: string; value: string }[] = [];
   let preexisting: string[] = [];

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { listAudit } from "@/server/audit";
 import { listTenants } from "@/server/tenants";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
 
 type SP = { da?: string; a?: string; account?: string; pagina?: string };
@@ -41,7 +39,6 @@ export default async function AuditPage({
   const from = isDate(sp.da) ? sp.da : undefined;
   const to = isDate(sp.a) ? sp.a : undefined;
   const account = isAdmin && sp.account ? sp.account : undefined;
-  try {
     const [rows, tenants] = await Promise.all([
       listAudit(session.scope, {
         from,
@@ -50,7 +47,7 @@ export default async function AuditPage({
         limit: PAGE_SIZE + 1,
         offset: (page - 1) * PAGE_SIZE,
       }),
-      isAdmin ? listTenants() : Promise.resolve([]),
+      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
     ]);
     const hasNext = rows.length > PAGE_SIZE;
     const shown = rows.slice(0, PAGE_SIZE);
@@ -119,8 +116,8 @@ export default async function AuditPage({
                         {new Date(r.createdAt).toLocaleString("it-IT")}
                       </TableCell>
                       <TableCell>{tenantName(r.tenantId)}</TableCell>
-                      <TableCell>{r.action}</TableCell>
-                      <TableCell>{r.object ?? "-"}</TableCell>
+                      <TableCell>{r.event}</TableCell>
+                      <TableCell>{r.entity ?? "-"}</TableCell>
                       <TableCell>{r.outcome ?? "-"}</TableCell>
                     </TableRow>
                   ))}
@@ -145,16 +142,4 @@ export default async function AuditPage({
         </div>
       </main>
     );
-  } catch {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <Alert variant="destructive">
-          <AlertTitle>Errore</AlertTitle>
-          <AlertDescription>
-            Impossibile caricare l&apos;audit. Ricarica la pagina.
-          </AlertDescription>
-        </Alert>
-      </main>
-    );
-  }
 }

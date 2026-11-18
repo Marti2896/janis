@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const dynamic = "force-dynamic";
 
 export default async function RicevutaDettaglioPage({
   params,
@@ -25,9 +24,9 @@ export default async function RicevutaDettaglioPage({
     ["Data fattura", r.data ? String(r.data).slice(0, 10) : "-"],
     [
       "Importo",
-      r.importo == null
+      r.importoCents == null
         ? "-"
-        : Number(r.importo).toLocaleString("it-IT", {
+        : (r.importoCents / 100).toLocaleString("it-IT", {
             style: "currency",
             currency: "EUR",
           }),

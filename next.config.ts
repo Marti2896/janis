@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Tutta l'app e autenticata e dinamica (sessione nel layout): niente cacheComponents.
   turbopack: {
     rules: {
       "*.css": {

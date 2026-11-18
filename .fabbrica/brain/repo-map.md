@@ -1,11 +1,11 @@
 # Mappa del repository
-<!-- fingerprint: de88313:135 -->
+<!-- fingerprint: 16ba13c:135 -->
 _Generata automaticamente dalla fabbrica: fotografia di stack, struttura e comandi del progetto._
 _Gli agenti la trovano già nel contesto: NON rianalizzare il progetto da zero e non riscrivere questo file._
 _Per i dettagli apri i file specifici. Le note di architettura scritte a mano restano in fondo._
 
 ## sdi-channel
-Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/interscambio-auth-dashboard` · ultimo commit: de88313 2026-11-18 fabbrica(run #408, it.0): Sbloccare l'anteprima: il modulo 'sonner' manca (lo importa src/c
+Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/interscambio-auth-dashboard` · ultimo commit: 16ba13c 2026-11-18 fabbrica(run #409, it.0): Sbloccare l'anteprima: GET / su 4810 dà 500 per l'adattatore src/
 File (esclusi build e dipendenze): 135
 
 **Linguaggi**: TypeScript (65) · TypeScript (React) (46) · SQL (4) · Markdown (3) · JavaScript (3) · CSS (1)

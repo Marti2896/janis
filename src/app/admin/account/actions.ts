@@ -1,10 +1,9 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/session";
 import { createTenant } from "@/server/tenants";
-import { createUser, resetUserPassword, setUserDisabled } from "@/server/users";
+import { resetPassword, setUserDisabled } from "@/server/users";
 
 export type AccountState = {
   ok: boolean;
@@ -13,10 +12,6 @@ export type AccountState = {
   tempPassword?: string;
   email?: string;
 };
-
-function tempPassword(): string {
-  return randomBytes(12).toString("base64url");
-}
 
 export async function createAccountAction(
   _prev: AccountState,
@@ -32,24 +27,17 @@ export async function createAccountAction(
     return { ok: false, error: "La partita IVA deve avere 11 cifre." };
   if (!/^\S+@\S+\.\S+$/.test(email))
     return { ok: false, error: "Inserisci un indirizzo email valido." };
-  const password = tempPassword();
+  let password: string;
   try {
-    const tenant = await createTenant({
-      denominazione,
-      partitaIva,
-      codiceFiscale: codiceFiscale || null,
-      actorUserId: session.user.id,
-    });
-    await createUser({
-      email,
-      password,
-      role: "cliente",
-      tenantId: tenant.id,
-      mustChangePassword: true,
-      actorUserId: session.user.id,
-    });
-  } catch {
-    return { ok: false, error: "Account non creato: email o partita IVA gia in uso." };
+    const res = await createTenant(
+      session.scope,
+      { denominazione, partitaIva, codiceFiscale: codiceFiscale || null, email },
+      session.user.id,
+    );
+    password = res.temporaryPassword;
+  } catch (e) {
+    const msg = e instanceof Error && e.name === "ValidationError" ? e.message : "Account non creato: email o partita IVA gia in uso.";
+    return { ok: false, error: msg };
   }
   revalidatePath("/admin/account");
   return { ok: true, tempPassword: password, email };
@@ -63,7 +51,7 @@ export async function toggleUserAction(
   const userId = String(formData.get("userId") ?? "");
   const disable = formData.get("disable") === "1";
   try {
-    await setUserDisabled(userId, disable, session.user.id);
+    await setUserDisabled(session.scope, userId, disable, session.user.id);
   } catch {
     return { ok: false, error: "Operazione non riuscita." };
   }
@@ -78,9 +66,11 @@ export async function resetPasswordAction(
   const session = await requireAdmin();
   const userId = String(formData.get("userId") ?? "");
   const email = String(formData.get("email") ?? "");
-  const password = tempPassword();
+  let password: string;
   try {
-    await resetUserPassword(userId, password, session.user.id);
+    const res = await resetPassword(session.scope, userId, session.user.id);
+    if (!res) return { ok: false, error: "Utente non trovato." };
+    password = res.temporaryPassword;
   } catch {
     return { ok: false, error: "Reset non riuscito." };
   }

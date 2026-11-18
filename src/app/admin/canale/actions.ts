@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/session";
-import { updateChannelSettings } from "@/server/channel-settings";
-import { listCertificates } from "@/server/certificates";
+import { saveChannelSettings } from "@/server/channel-settings";
 
 export type CanaleState = { ok: boolean; error?: string };
 
@@ -15,35 +14,11 @@ export async function saveChannelAction(
   const environment =
     formData.get("environment") === "production" ? "production" : "demo";
   const endpoint = String(formData.get("endpoint") ?? "").trim();
-  if (endpoint) {
-    try {
-      const u = new URL(endpoint);
-      if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error();
-    } catch {
-      return { ok: false, error: "L'endpoint deve essere un URL http o https valido." };
-    }
-  }
-  if (environment === "production") {
-    const now = Date.now();
-    const certs = await listCertificates();
-    const valid = certs.some(
-      (c) => c.environment === "production" && new Date(c.notAfter).getTime() > now,
-    );
-    if (!valid || !endpoint)
-      return {
-        ok: false,
-        error:
-          "Produzione bloccata: servono un certificato valido per la produzione e un endpoint.",
-      };
-  }
   try {
-    await updateChannelSettings({
-      environment,
-      endpoint,
-      actorUserId: session.user.id,
-    });
-  } catch {
-    return { ok: false, error: "Salvataggio non riuscito." };
+    await saveChannelSettings(session.scope, { environment, endpoint }, session.user.id);
+  } catch (e) {
+    const msg = e instanceof Error && e.name === "ValidationError" ? e.message : "Salvataggio non riuscito.";
+    return { ok: false, error: msg };
   }
   revalidatePath("/admin/canale");
   return { ok: true };

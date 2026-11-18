@@ -14,6 +14,7 @@ import type { NewInvoiceInput } from "./invoice-service.ts";
 import type { Scope } from "./scope.ts";
 import { createTenant } from "./tenants.ts";
 
+process.env.SECRETS_MASTER_KEY ??= "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 process.env.SDI_RETRY_BASE_MS = "1";
 process.env.SDI_RETRY_CAP_MS = "2";
 

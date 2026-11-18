@@ -20,13 +20,11 @@ export async function uploadCertificateAction(
     formData.get("environment") === "production" ? "production" : "demo";
   const password = String(formData.get("password") ?? "") || undefined;
   try {
-    await addCertificate({
-      file: Buffer.from(await file.arrayBuffer()),
-      fileName: file.name,
-      password,
-      environment,
-      actorUserId: session.user.id,
-    });
+    await addCertificate(
+      session.scope,
+      { file: Buffer.from(await file.arrayBuffer()), password, environment },
+      session.user.id,
+    );
   } catch {
     return { ok: false, error: "Password errata o file non valido." };
   }

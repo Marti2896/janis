@@ -19,13 +19,9 @@ export async function createKeyAction(
       : session.user.tenantId;
   if (!tenantId) return { ok: false, error: "Seleziona un account." };
   try {
-    const created = await createApiKey(session.scope, {
-      tenantId,
-      name,
-      actorUserId: session.user.id,
-    });
+    const created = await createApiKey(session.scope, { tenantId, name }, session.user.id);
     revalidatePath("/api");
-    return { ok: true, key: created.key };
+    return { ok: true, key: created.secret };
   } catch {
     return { ok: false, error: "Chiave non creata." };
   }
