@@ -41,9 +41,9 @@ export default async function AccountPage({
         )
       : allTenants;
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">Account</h1>
+          <h1 className="text-2xl font-semibold">Account clienti</h1>
           <NewAccountDialog />
         </div>
         <form className="flex gap-2" role="search">
@@ -62,6 +62,7 @@ export default async function AccountPage({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Denominazione</TableHead>
                     <TableHead>Partita IVA</TableHead>
                     <TableHead>Codice fiscale</TableHead>
@@ -70,10 +71,11 @@ export default async function AccountPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tenants.map((t) => {
+                  {tenants.map((t, i) => {
                     const count = users.filter((u) => u.tenantId === t.id).length;
                     return (
                       <TableRow key={t.id}>
+                        <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                         <TableCell className="font-medium">{t.denominazione}</TableCell>
                         <TableCell className="whitespace-nowrap">{t.partitaIva}</TableCell>
                         <TableCell className="whitespace-nowrap">{t.codiceFiscale ?? "-"}</TableCell>
@@ -104,14 +106,16 @@ export default async function AccountPage({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">#</TableHead>
                       <TableHead>Utente</TableHead>
                       <TableHead>Stato</TableHead>
                       <TableHead className="text-right">Azioni</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tu.map((u) => (
+                    {tu.map((u, i) => (
                       <TableRow key={u.id}>
+                        <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                         <TableCell>{u.email}</TableCell>
                         <TableCell>
                           <Badge variant={u.disabled ? "destructive" : "secondary"}>
@@ -144,6 +148,7 @@ export default async function AccountPage({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Prefisso</TableHead>
@@ -152,8 +157,9 @@ export default async function AccountPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {keys.map((k) => (
+                  {keys.map((k, i) => (
                     <TableRow key={k.id}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                       <TableCell>{k.tenantName ?? "-"}</TableCell>
                       <TableCell>{k.name}</TableCell>
                       <TableCell className="font-mono">{k.prefix}</TableCell>

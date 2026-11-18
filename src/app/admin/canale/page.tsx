@@ -20,8 +20,8 @@ export default async function CanalePage() {
       (c) => c.environment === "production" && c.level !== "expired",
     );
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
-        <h1 className="text-2xl font-semibold">Configurazione del canale</h1>
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
+        <h1 className="text-2xl font-semibold">Configurazione SdI</h1>
         <Card>
           <CardHeader>
             <CardTitle>Ambiente ed endpoint</CardTitle>
