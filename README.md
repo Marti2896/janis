@@ -1,6 +1,6 @@
-# SDI Channel
+# Janis
 
-Canale telematico SDICoop per la fatturazione elettronica italiana: generazione, firma CAdES-BES e invio fatture al SdI, ricezione di esiti e fatture passive, multi-tenant con API key per cliente, dashboard operativa.
+Janis è il canale telematico SDICoop per la fatturazione elettronica italiana: generazione, firma CAdES-BES e invio fatture al SdI, ricezione di esiti e fatture passive, multi-tenant con API key per cliente, dashboard operativa.
 
 Stato: **scheletro**. Le feature dell'MVP (vedi `.fabbrica/brain/business-rules.md`) non sono ancora implementate.
 

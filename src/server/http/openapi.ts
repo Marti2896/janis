@@ -1,4 +1,4 @@
-/** Documento OpenAPI 3.1 dell'API REST v1 di Interscambio. Autenticazione: header X-API-Key (una chiave per account). */
+/** Documento OpenAPI 3.1 dell'API REST v1 di Janis. Autenticazione: header X-API-Key (una chiave per account). */
 
 const err = (description: string) => ({
   description,
@@ -11,7 +11,7 @@ const unauthorized = { "401": err("Chiave mancante, errata o revocata") };
 export const openApiDocument = {
   openapi: "3.1.0",
   info: {
-    title: "Interscambio API",
+    title: "Janis API",
     version: "1.0.0",
     description:
       "Lettura e invio di fatture elettroniche per il proprio account. Ogni chiave API appartiene a un solo account e vede solo i dati di quell'account: una risorsa di un altro account risponde 404.",
