@@ -20,8 +20,8 @@ export default async function LoginPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
-            <Network className="size-6" />
-            Interscambio
+            <Network className="size-6 text-primary" />
+            Janis
           </CardTitle>
           <CardDescription>Accedi con il tuo account per gestire le fatture elettroniche.</CardDescription>
         </CardHeader>
