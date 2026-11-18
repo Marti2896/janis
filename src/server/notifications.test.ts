@@ -70,7 +70,7 @@ describe("parseNotification", () => {
   });
 
   it("rifiuta operazioni non supportate", async () => {
-    await expect(parseNotification(soap("MancataConsegna", "<x/>"))).rejects.toThrow(/non ancora supportata: MancataConsegna/);
+    await expect(parseNotification(soap("NotificaFileNonRecapitabile", "<x/>"))).rejects.toThrow(/non ancora supportata: NotificaFileNonRecapitabile/);
     expect(soapOperation(soap("NotificaEsito", "<x/>"))).toBe("NotificaEsito");
   });
 
@@ -188,7 +188,7 @@ describe.skipIf(!dbReady)("ricezione notifiche con Postgres", () => {
   });
 
   it("operazione non supportata o XML malformato: Fault 500", async () => {
-    expect((await post(soap("MancataConsegna", "<x/>"))).statusCode).toBe(500);
+    expect((await post(soap("NotificaFileNonRecapitabile", "<x/>"))).statusCode).toBe(500);
     expect((await post("<a><b></a>")).statusCode).toBe(500);
   });
 

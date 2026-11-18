@@ -8,15 +8,21 @@ const { values } = parseArgs({
     "nome-file": { type: "string" },
     "message-id": { type: "string", default: "M1" },
     errore: { type: "string", multiple: true },
+    esito: { type: "string" },
+    descrizione: { type: "string" },
   },
 });
 
-if ((values.tipo !== "RC" && values.tipo !== "NS") || !values.id || !values["nome-file"]) {
+const TIPI = ["RC", "NS", "MC", "NE", "DT", "SE"] as const;
+type Tipo = (typeof TIPI)[number];
+const tipo = TIPI.find((t) => t === values.tipo) as Tipo | undefined;
+if (!tipo || !values.id || !values["nome-file"]) {
   console.error(
-    "Uso: npm run --silent sdi:notifica-demo -- --tipo RC|NS --id <sdi_identifier> --nome-file <nome_file> [--message-id M1] [--errore CODICE:descrizione]",
+    "Uso: npm run --silent sdi:notifica-demo -- --tipo RC|NS|MC|NE|DT|SE --id <sdi_identifier> --nome-file <nome_file> [--message-id M1] [--errore CODICE:descrizione] [--esito EC01|EC02|EN00|EN01] [--descrizione testo]",
   );
   process.exit(1);
 }
+const esito = (["EC01", "EC02", "EN00", "EN01"] as const).find((e) => e === values.esito);
 
 const errori: DemoError[] = (values.errore ?? []).map((e) => {
   const i = e.indexOf(":");
@@ -25,10 +31,12 @@ const errori: DemoError[] = (values.errore ?? []).map((e) => {
 
 process.stdout.write(
   buildDemoNotificationSoap({
-    tipo: values.tipo,
+    tipo,
     sdiIdentifier: values.id,
     nomeFile: values["nome-file"],
     messageId: values["message-id"],
     errori,
+    ...(esito ? { esito } : {}),
+    ...(values.descrizione ? { descrizione: values.descrizione } : {}),
   }),
 );

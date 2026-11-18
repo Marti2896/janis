@@ -59,12 +59,14 @@ export interface Pagamento {
 export interface FatturaModel {
   cedente: Cedente;
   cessionario: Cessionario;
-  /** Esattamente 7 caratteri alfanumerici maiuscoli ("0000000" se serve la PEC). */
+  /** 7 caratteri alfanumerici con FPR12 ("0000000" se serve la PEC), 6 con FPA12 (codice IPA). */
   codiceDestinatario: string;
   pecDestinatario?: string;
+  /** FPR12 (privati, default) o FPA12 (pubblica amministrazione). */
+  formato?: "FPR12" | "FPA12";
   /** 5 caratteri alfanumerici. */
   progressivoInvio: string;
-  tipoDocumento: "TD01";
+  tipoDocumento: "TD01" | "TD04";
   divisa?: string;
   /** YYYY-MM-DD */
   data: string;

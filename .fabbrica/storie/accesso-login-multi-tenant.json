@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "slug": "accesso-login-multi-tenant",
+  "title": "Accedere alla piattaforma con il proprio account",
+  "summary": "Login con email e password; ogni utente entra nella propria area in base al ruolo e al tenant.",
+  "actors": [
+    "cliente",
+    "admin"
+  ],
+  "acceptance": [
+    "Senza sessione ogni pagina porta a /login",
+    "Credenziali errate mostrano un messaggio generico",
+    "Un cliente vede solo i dati del proprio tenant",
+    "Dopo il logout la sessione non è più valida"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "Apre l'app",
+      "detail": "Senza sessione viene reindirizzato al login.",
+      "actor": "utente",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "azione",
+      "title": "Inserisce email e password",
+      "detail": "Form con Card, Input email e password, Button Accedi.",
+      "actor": "utente",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "sistema",
+      "title": "Verifica credenziali e stato account",
+      "detail": "Hash argon2id o bcrypt; email case-insensitive.",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 197
+    },
+    {
+      "id": "n4",
+      "kind": "decisione",
+      "title": "Credenziali valide e account attivo?",
+      "detail": "Stesso messaggio generico in caso di errore.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 160
+    },
+    {
+      "id": "n5",
+      "kind": "uscita",
+      "title": "Messaggio generico di errore",
+      "detail": "Email o password non corretti. Dopo 5 errori in 15 minuti scatta il blocco.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 524
+    },
+    {
+      "id": "n6",
+      "kind": "decisione",
+      "title": "Ruolo admin?",
+      "detail": "Il ruolo determina il menu e le pagine accessibili.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 160
+    },
+    {
+      "id": "n7",
+      "kind": "sistema",
+      "title": "Apre la dashboard del cliente",
+      "detail": "Cookie interscambio_session httpOnly, redirect a /fatture con soli dati del tenant.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 197
+    },
+    {
+      "id": "n8",
+      "kind": "sistema",
+      "title": "Apre l'area admin",
+      "detail": "Vede tutti i tenant, certificati e canale.",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 505
+    },
+    {
+      "id": "n9",
+      "kind": "fine",
+      "title": "Area autenticata pronta",
+      "detail": "Logout cancella il cookie e invalida la sessione.",
+      "actor": "utente",
+      "media": [],
+      "x": 2180,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "apre login",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "invia",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "verifica",
+      "kind": "ok"
+    },
+    {
+      "id": "e4",
+      "from": "n4",
+      "to": "n5",
+      "label": "no",
+      "kind": "errore"
+    },
+    {
+      "id": "e5",
+      "from": "n4",
+      "to": "n6",
+      "label": "sì",
+      "kind": "ok"
+    },
+    {
+      "id": "e6",
+      "from": "n6",
+      "to": "n7",
+      "label": "cliente",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n8",
+      "label": "admin",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e8",
+      "from": "n7",
+      "to": "n9",
+      "label": "completato",
+      "kind": "ok"
+    },
+    {
+      "id": "e9",
+      "from": "n8",
+      "to": "n9",
+      "label": "completato",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-18T07:50:29.351Z",
+  "updated_at": "2026-11-18T07:50:29.351Z",
+  "updated_by": "run #406 · spec",
+  "layout_version": 4
+}

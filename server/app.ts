@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
-import { registerSdiReceiver } from "../src/server/notifications.ts";
+import { registerHttp } from "../src/server/http/server.ts";
 
 export interface AppDeps {
   sdiEnv: string;
@@ -29,7 +29,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       .send({ status: healthy ? "ok" : "degraded", sdiEnv: deps.sdiEnv, checks: results });
   });
 
-  if (deps.pool) registerSdiReceiver(app, { pool: deps.pool, sdiEnv: deps.sdiEnv });
+  if (deps.pool) registerHttp(app, { pool: deps.pool, sdiEnv: deps.sdiEnv });
 
   return app;
 }

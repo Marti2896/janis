@@ -1,5 +1,5 @@
-import type { InvoiceRepo } from "./repo";
-import { riceviFile, type RiceviFileResult, type SoapClientConfig } from "./soap";
+import type { InvoiceRepo } from "./repo.ts";
+import { riceviFile, type RiceviFileResult, type SoapClientConfig } from "./soap.ts";
 
 export type EmitResult =
   | { ok: true; result: RiceviFileResult }

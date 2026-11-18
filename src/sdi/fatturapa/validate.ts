@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import { validateXML } from "xmllint-wasm";
-import type { FieldError, ValidationResult } from "./types";
+import type { FieldError, ValidationResult } from "./types.ts";
 
 const XSD_DIR = path.join(process.cwd(), "src/sdi/fatturapa/xsd");
 const SCHEMA_NAME = "Schema_del_file_xml_FatturaPA_v1.2.2.xsd";
