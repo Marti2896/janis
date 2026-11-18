@@ -66,3 +66,67 @@ Non si verifica sulla preview condivisa (gira in demo e non va riconfigurata) e 
 - Browser sulla preview http://127.0.0.1:4810: login con i tre utenti di test sopra, verificare che senza sessione ogni pagina reindirizzi a `/login`.
 - Isolamento: da Beta aprire l'URL di dettaglio di una fattura di Alfa deve dare «non trovato»; stessa prova via API con la chiave di Beta.
 - Notifiche MC/NE/DT e fatture passive si simulano con il generatore `sdi:notifica-demo` (esteso dai builder) e curl su porta 4811.
+
+
+## Run #406 · builder · Accessi di test: auth, tenant, seed (copia 1)
+
+## Avvio dati
+- DB: `export DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel`
+- `node scripts/migrate.mjs` applica anche 0006.
+- `npm run db:seed` (o `node scripts/seed.ts`): idempotente; genera SECRETS_MASTER_KEY in .env se manca (solo sviluppo).
+
+## Utenti di test (solo sviluppo)
+- admin@interscambio.test / Admin-dev-2026! (ruolo admin)
+- cliente.alfa@interscambio.test / Cliente-dev-2026! (tenant Alfa Srl, P.IVA 01234567890)
+- cliente.beta@interscambio.test / Cliente-dev-2026! (tenant Beta Spa, P.IVA 09876543210)
+
+## Sessione
+Cookie `interscambio_session` httpOnly, SameSite=Lax, Secure in produzione, 12 ore. Blocco: 5 login falliti in 15 minuti sulla stessa email = rifiuto per 15 minuti.
+
+## Test
+`DATABASE_URL=... npx vitest run src/server/auth.test.ts src/server/isolation.test.ts`
+
+
+## Run #406 · builder · Backend SDI: notifiche, fatture passive e API v1 (copia 2)
+
+## Avvio
+`npm run db:migrate` applica anche 0007_sdi_notifiche_passive.sql. API su porta 4811 (processo Fastify).
+
+## Contratto esportato (src/server/invoice-service.ts)
+listInvoices(scope,{stato?,tenantId?,limit?,offset?}), getInvoice(scope,id) (null se di un altro tenant; contiene `events`), getInvoiceFile(scope,id) -> {fileName,bytes}, createAndSendInvoice(scope,input) -> {id,queued?,warning?,replay?} oppure {errors:{campo:messaggio}}, listReceived(scope), getReceived(scope,id) (con `bytes`), listUnassigned(scope), assignReceived(scope,id,tenantId), channelCounters(scope). Scope = {role:'admin'} | {role:'cliente',tenantId}. Input fattura: cessionarioDenominazione, cessionarioPartitaIva, cessionarioCodiceFiscale?, destinazione:{tipo:'codice'|'pec',valore}, tipoDocumento TD01|TD04, data, righe[{descrizione,quantita,prezzoUnitario in euro,aliquota 22|10|4|0}], idempotencyKey?, tenantId (solo admin).
+
+## Esempi curl (porta 4811, SDI_ENV=demo)
+Generare il SOAP: `npm run --silent sdi:notifica-demo -- --tipo MC --id 123 --nome-file IT01234567890_00001.xml.p7m > /tmp/n.xml`
+Tipi: RC, NS, MC, NE (--esito EC01|EC02), DT, SE.
+`curl -X POST http://localhost:4811/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data-binary @/tmp/n.xml`
+Fatture passive: POST /sdi/ricezione/ricezione-fatture con operazione RiceviFatture (IdentificativoSdI, NomeFile, File base64). DT e SE sono accettate anche su questo endpoint.
+
+## API v1
+Header X-API-Key. GET /api/v1/health e /api/v1/openapi.json pubblici. `curl -H 'X-API-Key: isk_...' http://localhost:4811/api/v1/invoices`. POST /api/v1/invoices con Idempotency-Key opzionale: 201 creata, 200 replay, 409 corpo diverso, 422 validazione. Altre rotte: /invoices/{id}, /invoices/{id}/file, /received-invoices, /received-invoices/{id}, /received-invoices/{id}/file.
+
+## Variabili
+DATABASE_URL, SDI_ENV, SDI_DEMO_TRASMISSIONE_URL (vuoto = fattura in coda). Nessun segreto nuovo. Il test usa il certificato di firma generato a runtime.
+
+
+## Run #406 · builder · Backend SDI: notifiche, fatture passive e API v1 (copia 2, rifatto)
+
+## Avvio
+`node scripts/migrate.mjs` applica anche 0007_sdi_notifiche_passive.sql. L'API Fastify gira su API_PORT (4811 in preview); `server/app.ts` registra ricezione SdI, RicezioneFatture e /api/v1.
+
+## Contratto (src/server/invoice-service.ts)
+listInvoices(scope,{stato?,tenantId?,limit?,offset?}) (stato = valore esatto oppure `queued` per il gruppo In coda), getInvoice(scope,id) con `events` (null se altro tenant), getInvoiceFile(scope,id), createAndSendInvoice(scope,input,{actorUserId?,source?}) -> {id,status,queued?,warning?,replay?} oppure {errors:{campo:messaggio},conflict?} (chiavi speciali `_form`, `_xsd`), listReceived(scope,{tenantId?,limit?,offset?}), getReceived(scope,id) con `bytes`, `contentType`, `history`, listUnassigned(scope) (solo admin), assignReceived(scope,id,tenantId,actorUserId?) (solo admin), channelCounters(scope) -> {queued,errors24h,notifications,recentErrors[]}. Importi in centesimi (`importoCents`). Input fattura: cessionarioDenominazione, cessionarioPartitaIva, cessionarioCodiceFiscale?, destinazione:{tipo:'codice'|'pec',valore}, tipoDocumento TD01|TD04, formato? FPR12|FPA12, data AAAA-MM-GG, righe[{descrizione,quantita,prezzoUnitario in euro,aliquota 22|10|4|0}], idempotencyKey?, tenantId (solo admin).
+
+## Notifiche demo (curl)
+`npm run --silent sdi:notifica-demo -- --tipo MC --id 123 --nome-file IT01234567890_00001.xml.p7m > /tmp/n.xml`
+Tipi: RC, NS, MC, NE (--esito EC01|EC02), DT, SE (--esito EN00|EN01).
+`curl -X POST http://localhost:4811/sdi/ricezione/trasmissione-fatture -H 'Content-Type: text/xml' --data-binary @/tmp/n.xml`
+Fatture passive: POST /sdi/ricezione/ricezione-fatture con operazione RiceviFatture (IdentificativoSdI, NomeFile, File base64 di XML o P7M). DT e SE sono accettate anche su questo endpoint. Instradamento per P.IVA poi codice fiscale del cessionario; senza corrispondenza la fattura e non assegnata (solo admin).
+
+## API v1
+Header X-API-Key (chiave isk_... creata da /api o /admin/account). GET /api/v1/health e /api/v1/openapi.json pubblici. `curl -H 'X-API-Key: isk_...' http://localhost:4811/api/v1/invoices`. POST /api/v1/invoices con Idempotency-Key opzionale: 201 creata, 200 replay, 409 corpo diverso, 422 validazione. Altre rotte: /invoices/{id}, /invoices/{id}/file, /received-invoices, /received-invoices/{id}, /received-invoices/{id}/file. 401 chiave mancante/errata/revocata; 404 risorsa di altro tenant.
+
+## Variabili
+DATABASE_URL, SDI_ENV, SDI_DEMO_TRASMISSIONE_URL (vuoto = fattura in coda con avviso), SDI_RETRY_*. Nessun segreto nuovo; senza certificato attivo in demo si usa il certificato di test generato a runtime.
+
+## Test
+`DATABASE_URL=... npx vitest run src/server/notifications.test.ts src/server/notifications-types.test.ts src/server/passive.test.ts src/server/api-v1.test.ts`

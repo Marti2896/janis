@@ -6,7 +6,11 @@ export type InvoiceStatus =
   | "send_error"
   | "send_unknown"
   | "delivered"
-  | "rejected";
+  | "rejected"
+  | "not_delivered"
+  | "accepted"
+  | "refused"
+  | "terms_expired";
 
 /** Contratto verso il repository (implementato altrove, iniettato). */
 export interface InvoiceRepo {

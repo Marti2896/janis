@@ -6,8 +6,8 @@ import type {
   FieldError,
   RigaFattura,
   Sede,
-} from "./types";
-import { validateFatturaXml } from "./validate";
+} from "./types.ts";
+import { validateFatturaXml } from "./validate.ts";
 
 const NS = "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2";
 
@@ -55,13 +55,16 @@ interface Riepilogo {
 function validateModel(m: FatturaModel): FieldError[] {
   const errors: FieldError[] = [];
   const err = (path: string, message: string) => errors.push({ path, message });
-  if (m.codiceDestinatario.length !== 7)
-    err("CodiceDestinatario", "CodiceDestinatario deve essere di 7 caratteri");
+  const formato = m.formato ?? "FPR12";
+  if (formato !== "FPR12" && formato !== "FPA12") err("FormatoTrasmissione", "Formato non valido (FPR12 o FPA12)");
+  const lenCodice = formato === "FPA12" ? 6 : 7;
+  if (m.codiceDestinatario.length !== lenCodice)
+    err("CodiceDestinatario", `CodiceDestinatario deve essere di ${lenCodice} caratteri`);
   if (!/^[A-Za-z0-9]{5}$/.test(m.progressivoInvio))
     err("ProgressivoInvio", "ProgressivoInvio deve essere alfanumerico di 5 caratteri");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(m.data)) err("Data", "Data deve essere nel formato YYYY-MM-DD");
   if (!m.numero) err("Numero", "Numero obbligatorio");
-  if (m.tipoDocumento !== "TD01") err("TipoDocumento", "Supportato solo TD01");
+  if (m.tipoDocumento !== "TD01" && m.tipoDocumento !== "TD04") err("TipoDocumento", "Supportati TD01 e TD04");
   if (m.righe.length === 0) err("DettaglioLinee", "La fattura deve avere almeno una riga");
   m.righe.forEach((r, i) => {
     const p = `DettaglioLinee[${i + 1}]`;
@@ -133,7 +136,7 @@ export async function buildFatturaXml(m: FatturaModel, opts: BuildOptions = {}):
   const header =
     `<FatturaElettronicaHeader>` +
     `<DatiTrasmissione><IdTrasmittente>${tag("IdPaese", c.idPaese)}${tag("IdCodice", c.partitaIva)}</IdTrasmittente>` +
-    `${tag("ProgressivoInvio", m.progressivoInvio)}<FormatoTrasmissione>FPR12</FormatoTrasmissione>` +
+    `${tag("ProgressivoInvio", m.progressivoInvio)}<FormatoTrasmissione>${m.formato ?? "FPR12"}</FormatoTrasmissione>` +
     `${tag("CodiceDestinatario", m.codiceDestinatario)}${tag("PECDestinatario", m.pecDestinatario)}</DatiTrasmissione>` +
     `<CedentePrestatore><DatiAnagrafici><IdFiscaleIVA>${tag("IdPaese", c.idPaese)}${tag("IdCodice", c.partitaIva)}</IdFiscaleIVA>` +
     `${tag("CodiceFiscale", c.codiceFiscale)}<Anagrafica>${tag("Denominazione", c.denominazione)}</Anagrafica>` +
@@ -175,7 +178,7 @@ export async function buildFatturaXml(m: FatturaModel, opts: BuildOptions = {}):
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<p:FatturaElettronica versione="FPR12" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="${NS}" ` +
+    `<p:FatturaElettronica versione="${m.formato ?? "FPR12"}" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="${NS}" ` +
     `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${header}${body}</p:FatturaElettronica>\n`;
 
   const validation = await validateFatturaXml(xml);

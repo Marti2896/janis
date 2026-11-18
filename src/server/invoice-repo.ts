@@ -1,15 +1,21 @@
 import type pg from "pg";
 import type { InvoiceRepo, InvoiceStatus } from "../sdi/client/repo.ts";
+// Il file di firma e il numero progressivo sono gestiti da invoice-service.ts: qui solo le transizioni di stato.
 
 const ALLOWED: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ["signed"],
   signed: ["sending"],
   sending: ["sent", "send_error", "send_unknown"],
-  sent: ["delivered", "rejected"],
-  send_unknown: ["delivered", "rejected"],
+  sent: ["delivered", "rejected", "not_delivered"],
+  send_unknown: ["delivered", "rejected", "not_delivered"],
   send_error: [],
-  delivered: [],
+  // NE e DT solo dopo la consegna (RC); MC solo dopo l'invio. Nessuna regressione di stato.
+  delivered: ["accepted", "refused", "terms_expired"],
   rejected: [],
+  not_delivered: [],
+  accepted: [],
+  refused: [],
+  terms_expired: [],
 };
 
 export function canTransition(from: InvoiceStatus, to: InvoiceStatus): boolean {
@@ -41,7 +47,8 @@ export function createInvoiceRepo(pool: pg.Pool): InvoiceRepo {
         const from = cur.rows[0].status as InvoiceStatus;
         const tenantId = cur.rows[0].tenant_id as string;
         if (!canTransition(from, to)) throw new Error(`Transizione non consentita: da ${from} a ${to}`);
-        const sdiId = typeof payload?.sdiIdentifier === "string" ? payload.sdiIdentifier : null;
+        const rawId = payload?.sdiIdentifier ?? payload?.identificativoSdi;
+        const sdiId = typeof rawId === "string" ? rawId : null;
         await client.query(
           "update invoices set status = $2, sdi_identifier = coalesce($3, sdi_identifier), updated_at = now() where id = $1",
           [invoiceId, to, sdiId],

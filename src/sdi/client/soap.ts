@@ -1,4 +1,4 @@
-import { DEFAULT_RETRY, withRetry, type RetryConfig } from "./retry";
+import { DEFAULT_RETRY, withRetry, type RetryConfig } from "./retry.ts";
 
 export interface SoapClientConfig {
   sdiEnv: "demo" | "production";
