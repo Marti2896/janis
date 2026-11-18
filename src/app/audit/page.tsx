@@ -47,7 +47,7 @@ export default async function AuditPage({
         limit: PAGE_SIZE + 1,
         offset: (page - 1) * PAGE_SIZE,
       }),
-      isAdmin ? listTenants(session.scope) : Promise.resolve([]),
+      listTenants(session.scope),
     ]);
     const hasNext = rows.length > PAGE_SIZE;
     const shown = rows.slice(0, PAGE_SIZE);

@@ -24,6 +24,7 @@ export async function requireSession(next?: string): Promise<{ user: SessionUser
     const target = next && next.startsWith("/") && !next.startsWith("//") ? `?next=${encodeURIComponent(next)}` : "";
     redirect(`/login${target}`);
   }
+  if (user.mustChangePassword) redirect("/cambia-password");
   return { user, scope: toScope(user) };
 }
 

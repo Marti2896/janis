@@ -240,7 +240,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
 
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? <Loader2 className="animate-spin" /> : <Send />}
-        {pending ? "Invio in corso..." : "Crea e invia"}
+        {pending ? "Invio in corso…" : "Crea e invia"}
       </Button>
     </form>
   );

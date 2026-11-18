@@ -382,7 +382,10 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
     }
     if (!x.invoice_id) return { errors: { idempotencyKey: "Richiesta con questa chiave ancora in corso" }, conflict: true };
     const s = await db.query("select status from invoices where id = $1", [x.invoice_id]);
-    return { id: x.invoice_id as string, status: s.rows[0]?.status as string, replay: true };
+    const status = s.rows[0]?.status as string;
+    return status === "signed"
+      ? { id: x.invoice_id as string, status, queued: true, warning: "Fattura in coda: l'endpoint SdI dell'ambiente attivo non e configurato.", replay: true }
+      : { id: x.invoice_id as string, status, replay: true };
   };
   const already = await replay();
   if (already) return already;

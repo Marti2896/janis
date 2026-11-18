@@ -166,7 +166,7 @@ export function AppShell({
         </div>
         <Separator className="md:hidden" />
       </header>
-      {children}
+      <div className="flex min-w-0 flex-1 flex-col [&>main]:w-full [&>main]:min-w-0">{children}</div>
       <Toaster />
     </>
   );

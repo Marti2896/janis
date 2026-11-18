@@ -17,6 +17,7 @@ export interface SessionUser {
   email: string;
   role: Role;
   tenantId: string | null;
+  mustChangePassword?: boolean;
 }
 
 export type Scope = { role: "admin" } | { role: "cliente"; tenantId: string };
@@ -109,13 +110,15 @@ export async function authenticate(input: {
 }
 
 function toSessionUser(u: authModule.SessionUser): SessionUser {
-  return { id: u.userId, email: u.email, role: u.role, tenantId: u.tenantId };
+  return { id: u.userId, email: u.email, role: u.role, tenantId: u.tenantId, mustChangePassword: u.mustChangePassword };
 }
 
 export async function getSessionUser(token: string): Promise<SessionUser | null> {
   const u = await authModule.getSession(token);
   return u ? toSessionUser(u) : null;
 }
+
+export const changeOwnPassword = authModule.changePassword;
 
 export const destroySession = (token: string): Promise<void> => authModule.destroySession(token);
 

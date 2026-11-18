@@ -74,7 +74,9 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
   if (Object.keys(errors).length > 0) return { fieldErrors: errors, error: null };
 
   const idempotencyKey = str(formData, "idempotencyKey");
-  const result = await createAndSendInvoice(scope, {
+  let result: Awaited<ReturnType<typeof createAndSendInvoice>>;
+  try {
+    result = await createAndSendInvoice(scope, {
     tenantId: user.role === "admin" ? tenantId : undefined,
     idempotencyKey,
     cessionario: { denominazione, partitaIva, codiceFiscale: codiceFiscale || undefined },
@@ -83,7 +85,11 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
     formato: formato as "FPR12" | "FPA12",
     data,
     righe,
-  });
+    });
+  } catch (err) {
+    console.error("createInvoiceAction", err);
+    return { fieldErrors: {}, error: "Errore imprevisto durante l'invio. Riprova: i dati inseriti sono ancora nel modulo." };
+  }
 
   if (!result.ok) {
     if (result.path) return { fieldErrors: {}, error: `${result.error} (campo: ${result.path})` };

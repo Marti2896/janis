@@ -34,8 +34,19 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 - L'endpoint di ricezione SdI non ha login (lo chiama SdI; in produzione sarà protetto da mutua TLS).
 
 ## Dati di seed
-- Tenant Alfa Srl (01234567890) e Beta Spa (09876543210), ciascuno con almeno 3 fatture emesse in stati diversi.
+- Tenant Alfa Srl (01234567890) e Beta Spa (09876543210), ciascuno con 4 fatture emesse di seed (`scripts/seed.ts`).
+- Fatture di seed utilizzabili per le notifiche SdI (nell'anteprima l'endpoint demo è vuoto, quindi le fatture create dal form o via API restano in coda SENZA IdentificativoSdI e non ricevono notifiche: per MC, NE, DT e fuori sequenza usa queste):
+
+| Tenant | Numero | nome_file | IdentificativoSdI | Stato | Notifiche provabili |
+|---|---|---|---|---|---|
+| Alfa | 1/2026 | IT01234567890_alfa1.xml.p7m | 990000001 | consegnata | NE (EC01/EC02), DT; MC = fuori sequenza |
+| Alfa | 2/2026 | IT01234567890_alfa2.xml.p7m | 990000002 | inviata | MC, RC, NS; NE/DT = fuori sequenza |
+| Alfa | 3/2026 | IT01234567890_alfa3.xml.p7m | 990000003 | scartata | qualsiasi = fuori sequenza |
+| Beta | 1/2026, 2/2026, 3/2026 | IT09876543210_beta1..3.xml.p7m | 991000001..3 | come Alfa | come Alfa |
+
+  Sono dati di test condivisi: il QA può inviarci notifiche (servono a questo). Ogni notifica che cambia stato è definitiva (append-only): annota nel report quali hai consumato. Il seed è idempotente su nome_file, quindi rilanciarlo non le ripristina.
 - Fattura demo storica: DEMO-0001, nome_file `IT01234567890_00001.xml.p7m`, sdi_identifier `9900000001`.
+- Certificati: l'upload richiede `SECRETS_MASTER_KEY` in `.env` (la scrive `npm run db:seed` se manca). Dopo averla aggiunta la preview va riavviata dall'infrastruttura.
 - Il seed non riporta indietro gli stati (tabelle append-only). Per ripetere test di notifiche crea fatture nuove (dal form o via API) oppure ricrea il DB: `docker compose down -v && docker compose up -d`, poi migrate e seed.
 - Dati lasciati dal QA run #406 lane 3: ricevuta 7300003001 (QA3-PASS-001, tenant Alfa) e 7300003002 (QA3-NOMATCH-002, non assegnata).
 
