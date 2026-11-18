@@ -23,7 +23,7 @@ export default async function InvoiceDetailPage({
   searchParams: Promise<{ coda?: string }>;
 }) {
   const { id } = await params;
-  const { coda } = await searchParams;
+  await searchParams;
   const { scope } = await requireSession(`/fatture/${id}`);
   // Id malformato o di un altro tenant: stessa risposta, nessuna rivelazione.
   if (!UUID.test(id)) notFound();
@@ -50,10 +50,10 @@ export default async function InvoiceDetailPage({
       </Button>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">Fattura {invoice.numero}</h1>
-        <StatusBadge status={coda && invoice.status === "signed" ? "queued" : invoice.status} />
+        <StatusBadge status={invoice.status} />
       </div>
 
-      {coda && (invoice.status === "draft" || invoice.status === "signed") && (
+      {(invoice.status === "draft" || invoice.status === "signed") && (
         <Alert variant="warning">
           <Clock />
           <AlertTitle>Fattura in coda</AlertTitle>
