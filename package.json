@@ -1,5 +1,5 @@
 {
-  "name": "sdi-channel",
+  "name": "interscambio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "dev:web": "next dev -p ${WEB_PORT:-3000}",
     "dev:api": "node --env-file-if-exists=.env --watch server/index.ts",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
-    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "sdi:notifica-demo": "node scripts/notifica-demo.ts",
     "build": "next build",
     "start": "next start",
@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "argon2": "^0.45.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.12.1",
