@@ -24,10 +24,21 @@ interface Props {
 }
 
 export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
-  const [state, action, pending] = useActionState<NewInvoiceState, FormData>(createInvoiceAction, {
-    fieldErrors: {},
-    error: null,
-  });
+  const [state, action, pending] = useActionState<NewInvoiceState, FormData>(
+    async (prev, fd) => {
+      try {
+        return await createInvoiceAction(prev, fd);
+      } catch (err) {
+        // Il redirect del server arriva come eccezione di controllo del framework: va rilanciato.
+        if (err && typeof err === "object" && "digest" in err) throw err;
+        return {
+          fieldErrors: {},
+          error: "Errore di comunicazione con il server. Riprova: i dati inseriti sono ancora nel modulo.",
+        };
+      }
+    },
+    { fieldErrors: {}, error: null },
+  );
   const [rowIds, setRowIds] = useState<number[]>([0]);
   const [nextId, setNextId] = useState(1);
   const [destTipo, setDestTipo] = useState("codice");
@@ -51,6 +62,9 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
           <AlertTitle>Impossibile inviare la fattura</AlertTitle>
           <AlertDescription>
             <p>{state.error}</p>
+            <Button type="submit" variant="outline" size="sm" className="mt-2" disabled={pending}>
+              Riprova
+            </Button>
           </AlertDescription>
         </Alert>
       )}

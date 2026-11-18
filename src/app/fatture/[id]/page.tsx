@@ -50,15 +50,15 @@ export default async function InvoiceDetailPage({
       </Button>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">Fattura {invoice.numero}</h1>
-        <StatusBadge status={invoice.status} />
+        <StatusBadge status={coda && invoice.status === "signed" ? "queued" : invoice.status} />
       </div>
 
-      {coda && invoice.status === "draft" && (
+      {coda && (invoice.status === "draft" || invoice.status === "signed") && (
         <Alert variant="warning">
           <Clock />
           <AlertTitle>Fattura in coda</AlertTitle>
           <AlertDescription>
-            <p>L&apos;endpoint SdI dell&apos;ambiente attivo non e configurato: la fattura resta in coda e verra inviata appena disponibile.</p>
+            <p>L&apos;endpoint SdI non è configurato: la fattura resta in coda.</p>
           </AlertDescription>
         </Alert>
       )}
