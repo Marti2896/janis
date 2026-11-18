@@ -41,7 +41,7 @@ Testo dei badge tenui (token «ink», contrasto AA 4.5:1 misurato sul fondo comp
 |---|---|---|---|
 | `--neutral-ink` | #475569 (slate 600) | #CBD5E1 (slate 300) | `neutral` = `bg-muted text-neutral-ink` |
 | `--info-ink` | #076A61 circa (petrolio scuro) | #5EEAD4 circa (teal 300) | `info` = `bg-primary/10 text-info-ink` |
-| `--success-ink` | #15803D circa (green 700) | #86EFAC circa (green 300) | `success-soft` |
+| `--success-ink` | #166534 (green 800; green 700 #15803D misurava 4,49:1 su success/10, issue #138) | #86EFAC circa (green 300) | `success-soft` |
 | `--warning-ink` | #B45309 circa (amber 700) | #FDE047 circa | `warning` |
 | `--destructive-ink` | #B91C1C circa (red 700) | #FCA5A5 circa | `danger` |
 
