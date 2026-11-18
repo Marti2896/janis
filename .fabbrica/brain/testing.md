@@ -132,6 +132,7 @@ POST `http://127.0.0.1:4811/sdi/ricezione/ricezione-fatture` con busta RiceviFat
 |---|---|---|---|
 | qa1-c1.attivo@interscambio.test | Qa1-attivo-nota-2026 | qa1-c1 Tenant Attivo (55500000011) | password già cambiata; 5 errori lo bloccano 15 minuti |
 | qa1-c1.disattivato@interscambio.test | - | qa1-c1 Tenant Disattivato (55500000022) | disattivato, serve per il messaggio generico |
+| qa1-c1.nuovo@interscambio.test | Qa1-nuovo-nota-2026 | qa1-c1 Tenant Nuovo (55500000033) | password già cambiata dalla temporanea |
 | qa4.cliente@interscambio.test | Cliente-qa4-2026!x | qa4 Cliente Test (55555555555, CF QA4CFTEST0000001) | fatture ricevute di prova |
 | qa4.vuoto@interscambio.test | Vuoto-qa4-2026!x | qa4 Cliente Vuoto (44444444444) | nessuna fattura ricevuta (stato vuoto) |
 | qa2-c2.vuoto@interscambio.test | Qa2-cliente-nota-2026! | qa2-c2 Tenant Vuoto (66600000011) | nessuna fattura emessa (stato vuoto) |
@@ -142,13 +143,12 @@ Chiavi API lasciate dalla corsia 6: qa6-alfa-copia e qa6-alfa-file (attive, Alfa
 - Lo script `qa:fattura-inviata` accetta anche `--cessionario "<nome>"` per dare un nome riconoscibile al cliente della fattura di prova.
 - Pagina 403 in sviluppo (#111): l'avviso di console «negative time stamp» del Performance measure è un difetto noto del dev server di Next, non dell'app; conta solo l'errore «script tag».
 
-
-## Run #406 · qa · Accessi QA corsia 1 - giro mirato (run 406)
-
-## Accessi QA corsia 1 (run 406, giro mirato)
-
-- qa1-c1.attivo@interscambio.test: riattivato dall'area admin (era disattivato). Password Qa1-attivo-nota-2026. Ha un blocco residuo da tentativi sbagliati.
-- qa1-c1.disattivato@interscambio.test: disattivato, serve per il messaggio generico.
-- qa1-c1.nuovo@interscambio.test (tenant qa1-c1 Tenant Nuovo, P.IVA 55500000033, cliente): password attuale Qa1-nuovo-nota-2026 (cambiata dalla temporanea). Bloccato dal test di lockout fino a 15 minuti dopo le 13:44.
-
-Nessuna nuova variabile d'ambiente.
+## Restyling (run #421): cosa cambia per il test
+Solo aspetto e navigazione: nessuna rotta, dato, utente o variabile d'ambiente nuova. Seed e utenti di test sono quelli sopra (admin@interscambio.test e cliente.alfa@interscambio.test bastano). Riferimento di stile: design.md (palette, layout, sidebar) e ADR 0007.
+- Navigazione: non c'è più la fila di link nell'header. Da 768px in su sidebar fissa a sinistra con i gruppi Fatture, Canale, Audit e, solo per admin e dopo un separatore, Amministrazione. Sotto 768px barra in alto con il pulsante «Apri il menu» (Sheet da sinistra con gli stessi gruppi). Menu utente con email, ruolo ed «Esci» in fondo alla sidebar (o nella barra su mobile).
+- Etichette nuove: «API e chiavi» (era «API»), «Account clienti» (era «Account»), «Configurazione SdI» (era «Canale» admin). Le altre voci restano uguali.
+- Controlli per ruolo: cliente.alfa NON vede il gruppo Amministrazione; admin lo vede con Account clienti, Configurazione SdI, Certificati. Aprire a mano `/admin/account` da cliente dà ancora «Accesso negato».
+- Larghezza: con finestra 1440px il contenuto delle liste occupa fino a 1280px (`max-w-7xl`) accanto alla sidebar; nessuno scroll orizzontale della pagina a 375px (la tabella scorre dentro il suo contenitore).
+- Tabelle: prima colonna «#» numerata 1, 2, 3... in fatture emesse, ricevute, cronologia, account, certificati, chiavi API, righe del dettaglio ricevuta e righe del form Nuova fattura. In /fatture e /audit la pagina 2 riparte dal numero successivo all'ultimo della pagina 1 (es. 26 se la pagina ha 25 righe).
+- Colori: bottoni primari e voce attiva della sidebar in blu; badge di stato arrotondati con fondo tenue (verde Consegnata/Accettata, blu Inviata, grigio In coda/Sostituita, rosso Scartata/Rifiutata/Errore invio, ambra Mancata consegna/Termini scaduti/Esito incerto). Il tema scuro deve restare leggibile.
+- Screenshot da fare (cartella della run): /login, /fatture (admin e cliente), /fatture/nuova, /ricevute, /stato, /audit, /admin/account, /certificati, più /fatture a 375px con menu aperto.
