@@ -229,7 +229,7 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
       {r.notifications.length > 0 && (
         <Card className="min-w-0">
           <CardHeader>
-            <CardTitle className="text-lg">Notifiche SdI</CardTitle>
+            <CardTitle className="text-lg">Comunicazioni del Sistema di Interscambio</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="max-w-full overflow-x-auto">
@@ -237,29 +237,28 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data e ora</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Esito</TableHead>
-                    <TableHead>Descrizione</TableHead>
+                    <TableHead>Comunicazione</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {r.notifications.map((n, k) => (
                     <TableRow key={k}>
-                      <TableCell className="whitespace-nowrap">{formatDateTime(n.at)}</TableCell>
-                      <TableCell>{n.type === "SE" ? "Scarto esito committente (SE)" : n.type}</TableCell>
+                      <TableCell className="whitespace-nowrap align-top">{formatDateTime(n.at)}</TableCell>
                       <TableCell>
-                        {n.esito ? (
-                          <span className="flex flex-col items-start gap-1">
-                            <Badge variant={n.esito === "EN01" ? "destructive" : "outline"}>{n.esito}</Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {n.esito === "EN00" ? "Esito accettato" : n.esito === "EN01" ? "Esito rifiutato" : ""}
-                            </span>
+                        <p>
+                          {n.descrizione?.trim() ||
+                            (n.type === "SE"
+                              ? "Il Sistema di Interscambio non ha accettato la tua risposta (accettazione o rifiuto) su questa fattura."
+                              : "Comunicazione del Sistema di Interscambio su questa fattura.")}
+                        </p>
+                        <details className="mt-1 text-xs text-muted-foreground">
+                          <summary className="cursor-pointer">Dettagli tecnici</summary>
+                          <span>
+                            Tipo {n.type}
+                            {n.esito ? `, esito ${n.esito}` : ""}
                           </span>
-                        ) : (
-                          "-"
-                        )}
+                        </details>
                       </TableCell>
-                      <TableCell>{n.descrizione ?? "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

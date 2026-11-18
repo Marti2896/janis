@@ -133,6 +133,9 @@ POST `http://127.0.0.1:4811/sdi/ricezione/ricezione-fatture` con busta RiceviFat
 | qa1-c1.disattivato@interscambio.test | - | qa1-c1 Tenant Disattivato (55500000022) | disattivato, serve per il messaggio generico |
 | qa4.cliente@interscambio.test | Cliente-qa4-2026!x | qa4 Cliente Test (55555555555, CF QA4CFTEST0000001) | fatture ricevute di prova |
 | qa4.vuoto@interscambio.test | Vuoto-qa4-2026!x | qa4 Cliente Vuoto (44444444444) | nessuna fattura ricevuta (stato vuoto) |
+| qa2-c2.vuoto@interscambio.test | Qa2-cliente-nota-2026! | qa2-c2 Tenant Vuoto (66600000011) | nessuna fattura emessa (stato vuoto) |
 
 Chiavi API lasciate dalla corsia 6: qa6-alfa-copia e qa6-alfa-file (attive, Alfa), qa6-alfa-nuova e qa6-beta-api (revocate). Per un nuovo utente: /admin/account, «Nuovo account» (password temporanea mostrata una volta; chiudere il dialog con Escape o ricaricando).
-- Nota: il selettore Account di /audit e /fatture elenca anche molti tenant creati dai test automatici (Lock, Passive, T, Test...). Pulizia in corso (issue di triage it.15); intanto ignorarli.
+- Nota: il selettore Account di /audit e /fatture elenca anche molti tenant creati dai test automatici (Lock, Passive, T, Test...). Pulizia in corso (#117); intanto ignorarli.
+- Lo script `qa:fattura-inviata` accetta anche `--cessionario "<nome>"` per dare un nome riconoscibile al cliente della fattura di prova.
+- Pagina 403 in sviluppo (#111): l'avviso di console «negative time stamp» del Performance measure è un difetto noto del dev server di Next, non dell'app; conta solo l'errore «script tag».

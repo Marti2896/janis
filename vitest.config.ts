@@ -15,6 +15,7 @@ function devMasterKey(): string | undefined {
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
   test: {
+    globalSetup: ["./vitest.global-setup.ts"],
     env: {
       LOG_LEVEL: "silent",
       SECRETS_MASTER_KEY: devMasterKey() ?? "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",

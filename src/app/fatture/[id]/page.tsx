@@ -39,7 +39,7 @@ export default async function InvoiceDetailPage({
     ["Importo", formatEuro(invoice.importoCents)],
   ];
   if (invoice.ambiente) fields.push(["Ambiente", invoice.ambiente]);
-  if (invoice.sdiIdentifier) fields.push(["Numero SdI", invoice.sdiIdentifier]);
+  if (invoice.sdiIdentifier) fields.push(["IdentificativoSdI", invoice.sdiIdentifier]);
 
   // Una notifica e il cambio di stato che provoca arrivano nello stesso istante: si mostra una sola voce.
   const notifTimes = invoice.events.filter((e) => e.kind === "notifica").map((e) => new Date(e.at).getTime());
@@ -148,7 +148,9 @@ export default async function InvoiceDetailPage({
                   </div>
                   <time className="text-sm text-muted-foreground">{formatDateTime(e.at)}</time>
                   {e.ignored && (
-                    <p className="text-sm text-muted-foreground">Registrata: arrivata prima della consegna, lo stato non cambia.</p>
+                    <p className="text-sm text-muted-foreground">{e.type === "MC"
+                        ? "Registrata dopo la consegna: lo stato non cambia."
+                        : "Registrata: arrivata prima della consegna, lo stato non cambia."}</p>
                   )}
                   {outcomeLabel(e.outcome) && <p className="text-sm">{outcomeLabel(e.outcome)}</p>}
                   {e.errors?.length ? (

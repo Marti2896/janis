@@ -75,8 +75,8 @@ function statusWord(status: string): string {
 }
 
 const OUTCOME: Record<string, string> = {
-  EC01: "Accettata dal committente",
-  EC02: "Rifiutata dal committente",
+  EC01: "Accettata dal cliente",
+  EC02: "Rifiutata dal cliente",
 };
 
 export function outcomeLabel(code: string | null | undefined): string | null {

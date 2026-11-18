@@ -22,6 +22,17 @@ import { NATURE_OPTIONS } from "@/lib/nature-iva";
 import type { InvoicePrefill } from "@/lib/server-api";
 import { createInvoiceAction, validateInvoiceAction, type NewInvoiceState } from "./actions";
 
+/** Porta pagina e cursore sul primo campo (in ordine di pagina) che ha un errore. */
+function focusFirstError(form: HTMLFormElement, keys: string[]) {
+  const wanted = new Set(keys);
+  const el = Array.from(form.elements).find(
+    (x) => (x as HTMLInputElement).name && wanted.has((x as HTMLInputElement).name) && (x as HTMLInputElement).type !== "hidden",
+  ) as HTMLElement | undefined;
+  if (!el) return;
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  el.focus({ preventScroll: true });
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="text-sm text-destructive">{message}</p>;
@@ -115,6 +126,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
     if (!t?.name || !t.value?.trim()) return;
     setCleared((c) => (c.has(t.name) ? c : new Set(c).add(t.name)));
   }
+  const errorCount = Object.keys(e).filter((k) => !k.startsWith("_")).length;
   const tot = totals(rows);
   const cedente = role === "admin" ? tenants.find((t) => t.id === tenantSel) : tenants[0];
 
@@ -125,7 +137,8 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
   function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     if (pending || checking) return;
-    const fd = new FormData(ev.currentTarget);
+    const form = ev.currentTarget;
+    const fd = new FormData(form);
     fd.set("righe.count", String(rows.length));
     setChecking(true);
     validateInvoiceAction(fd)
@@ -133,6 +146,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
         setCleared(new Set());
         setPre(res.fieldErrors);
         if (Object.keys(res.fieldErrors).length === 0 && !res.error) setSummary(fd);
+        else focusFirstError(form, Object.keys(res.fieldErrors));
       })
       .catch(() => setSummary(fd))
       .finally(() => setChecking(false));
@@ -193,7 +207,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
 
       <Card>
         <CardHeader>
-          <CardTitle>Cedente</CardTitle>
+          <CardTitle>I tuoi dati (cedente)</CardTitle>
           <CardDescription>Il cedente è il tuo account e non si può modificare.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
@@ -236,7 +250,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
 
       <Card>
         <CardHeader>
-          <CardTitle>Cessionario</CardTitle>
+          <CardTitle>Cliente (cessionario)</CardTitle>
           <CardDescription>Dati del cliente a cui emetti la fattura.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -467,6 +481,15 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
           </dl>
         </CardContent>
       </Card>
+
+      {errorCount > 0 && (
+        <Alert variant="destructive" role="alert">
+          <AlertCircle />
+          <AlertDescription>
+            Controlla i campi evidenziati: {errorCount === 1 ? "c'è 1 errore" : `ci sono ${errorCount} errori`}.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? <Loader2 className="animate-spin" /> : <Send />}

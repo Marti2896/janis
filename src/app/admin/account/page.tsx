@@ -53,17 +53,51 @@ export default async function AccountPage({
         {tenants.length === 0 && (
           <p className="text-muted-foreground">{term ? "Nessun account corrisponde alla ricerca." : "Nessun account cliente."}</p>
         )}
+        {tenants.length > 0 && (
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle className="text-lg">Account clienti</CardTitle>
+            </CardHeader>
+            <CardContent className="max-w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Denominazione</TableHead>
+                    <TableHead>Partita IVA</TableHead>
+                    <TableHead>Codice fiscale</TableHead>
+                    <TableHead>Utenti</TableHead>
+                    <TableHead>Stato</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tenants.map((t) => {
+                    const count = users.filter((u) => u.tenantId === t.id).length;
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">{t.denominazione}</TableCell>
+                        <TableCell className="whitespace-nowrap">{t.partitaIva}</TableCell>
+                        <TableCell className="whitespace-nowrap">{t.codiceFiscale ?? "-"}</TableCell>
+                        <TableCell>{count}</TableCell>
+                        <TableCell>
+                          <Badge variant={t.activeUsersCount > 0 ? "secondary" : "destructive"}>
+                            {t.activeUsersCount > 0 ? "Attivo" : "Disattivato"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
         {tenants.map((t) => {
           const tu = users.filter((u) => u.tenantId === t.id);
           return (
             <Card key={t.id}>
               <CardHeader>
-                <CardTitle className="flex flex-wrap items-center gap-2">
-                  {t.denominazione}
-                  <Badge variant="secondary">P.IVA {t.partitaIva}</Badge>
-                  {t.codiceFiscale && (
-                    <Badge variant="outline">CF {t.codiceFiscale}</Badge>
-                  )}
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+                  Utenti di {t.denominazione}
                 </CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto">
