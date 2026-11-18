@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "slug": "rinomina-janis-palette",
+  "title": "Riconoscere Janis e la palette petrolio",
+  "summary": "Il visitatore e il cliente vedono il nuovo nome Janis e il colore principale petrolio su login, sidebar e badge.",
+  "actors": [
+    "visitatore",
+    "cliente",
+    "admin"
+  ],
+  "acceptance": [
+    "Il titolo della scheda e la sidebar mostrano Janis",
+    "I bottoni primari e la voce attiva sono #0B8277 nel tema chiaro e #2DB3A5 nel tema scuro",
+    "Inviata e Consegnata sono distinguibili",
+    "Il testo resta leggibile con contrasto AA"
+  ],
+  "status": "bozza",
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "inizio",
+      "title": "Apre Janis nel browser",
+      "detail": "Pagina di login senza sessione",
+      "actor": "utente",
+      "media": [],
+      "x": 80,
+      "y": 216
+    },
+    {
+      "id": "n2",
+      "kind": "azione",
+      "title": "Apre il login o l'area autenticata",
+      "detail": "Scheda e logo sono i primi segni del nome",
+      "actor": "utente",
+      "media": [],
+      "x": 430,
+      "y": 197
+    },
+    {
+      "id": "n3",
+      "kind": "sistema",
+      "title": "Mostra Janis nel titolo, nel logo e nella sidebar",
+      "detail": "Titolo Accedi - Janis; logo testuale Janis",
+      "actor": "sistema",
+      "media": [],
+      "x": 780,
+      "y": 197
+    },
+    {
+      "id": "n4",
+      "kind": "decisione",
+      "title": "Tema chiaro o scuro?",
+      "detail": "Decide il colore primario in uso",
+      "actor": "sistema",
+      "media": [],
+      "x": 1130,
+      "y": 160
+    },
+    {
+      "id": "n5",
+      "kind": "sistema",
+      "title": "Tema chiaro: primario #0B8277",
+      "detail": "Bottoni con testo bianco; voce attiva con testo --info-ink",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 197
+    },
+    {
+      "id": "n6",
+      "kind": "sistema",
+      "title": "Tema scuro: primario #2DB3A5",
+      "detail": "Bottoni con testo #042F2B",
+      "actor": "sistema",
+      "media": [],
+      "x": 1480,
+      "y": 505
+    },
+    {
+      "id": "n7",
+      "kind": "sistema",
+      "title": "Badge: Inviata petrolio, Consegnata verde",
+      "detail": "Inviata e Consegnata si distinguono a colpo d'occhio",
+      "actor": "sistema",
+      "media": [],
+      "x": 1830,
+      "y": 197
+    },
+    {
+      "id": "n8",
+      "kind": "fine",
+      "title": "Janis con palette petrolio",
+      "detail": "Nessun blu residuo, contrasti AA",
+      "actor": "utente",
+      "media": [],
+      "x": 2180,
+      "y": 216
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "label": "apre",
+      "kind": "ok"
+    },
+    {
+      "id": "e2",
+      "from": "n2",
+      "to": "n3",
+      "label": "mostra",
+      "kind": "ok"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n4",
+      "label": "verifica tema",
+      "kind": "ok"
+    },
+    {
+      "id": "e4",
+      "from": "n4",
+      "to": "n5",
+      "label": "chiaro",
+      "kind": "ok"
+    },
+    {
+      "id": "e5",
+      "from": "n4",
+      "to": "n6",
+      "label": "scuro",
+      "kind": "alternativo"
+    },
+    {
+      "id": "e6",
+      "from": "n5",
+      "to": "n7",
+      "label": "badge",
+      "kind": "ok"
+    },
+    {
+      "id": "e7",
+      "from": "n6",
+      "to": "n7",
+      "label": "badge",
+      "kind": "ok"
+    },
+    {
+      "id": "e8",
+      "from": "n7",
+      "to": "n8",
+      "label": "completato",
+      "kind": "ok"
+    }
+  ],
+  "created_at": "2026-11-18T16:55:24.362Z",
+  "updated_at": "2026-11-18T16:55:24.362Z",
+  "updated_by": "run #422 · spec",
+  "layout_version": 4
+}

@@ -242,6 +242,40 @@ Fatto quando:
 - Un duplicato con lo stesso IdentificativoSdI non crea un nuovo record
 - Una fattura senza destinatario noto resta visibile solo all'admin
 
+## Riconoscere Janis e la palette petrolio (rinomina-janis-palette)
+Il visitatore e il cliente vedono il nuovo nome Janis e il colore principale petrolio su login, sidebar e badge.
+Attori: visitatore, cliente, admin
+- [inizio] Apre Janis nel browser · utente
+  Pagina di login senza sessione
+- [azione] Apre il login o l'area autenticata · utente
+  Scheda e logo sono i primi segni del nome
+- [sistema] Mostra Janis nel titolo, nel logo e nella sidebar · sistema
+  Titolo Accedi - Janis; logo testuale Janis
+- [decisione] Tema chiaro o scuro? · sistema
+  Decide il colore primario in uso
+- [sistema] Tema chiaro: primario #0B8277 · sistema
+  Bottoni con testo bianco; voce attiva con testo --info-ink
+- [sistema] Tema scuro: primario #2DB3A5 · sistema
+  Bottoni con testo #042F2B
+- [sistema] Badge: Inviata petrolio, Consegnata verde · sistema
+  Inviata e Consegnata si distinguono a colpo d'occhio
+- [fine] Janis con palette petrolio · utente
+  Nessun blu residuo, contrasti AA
+- Apre Janis nel browser → Apre il login o l'area autenticata (apre)
+- Apre il login o l'area autenticata → Mostra Janis nel titolo, nel logo e nella sidebar (mostra)
+- Mostra Janis nel titolo, nel logo e nella sidebar → Tema chiaro o scuro? (verifica tema)
+- Tema chiaro o scuro? → Tema chiaro: primario #0B8277 (chiaro)
+- Tema chiaro o scuro? ⇢ Tema scuro: primario #2DB3A5 (scuro)
+- Tema chiaro: primario #0B8277 → Badge: Inviata petrolio, Consegnata verde (badge)
+- Tema scuro: primario #2DB3A5 → Badge: Inviata petrolio, Consegnata verde (badge)
+- Badge: Inviata petrolio, Consegnata verde → Janis con palette petrolio (completato)
+
+Fatto quando:
+- Il titolo della scheda e la sidebar mostrano Janis
+- I bottoni primari e la voce attiva sono #0B8277 nel tema chiaro e #2DB3A5 nel tema scuro
+- Inviata e Consegnata sono distinguibili
+- Il testo resta leggibile con contrasto AA
+
 ## Usare l'API con una chiave per account (api-esterna-chiavi)
 Il cliente genera una chiave; un sistema esterno legge e invia fatture solo per il proprio tenant.
 Attori: cliente, sistema esterno
