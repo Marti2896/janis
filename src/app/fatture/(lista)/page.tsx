@@ -140,7 +140,7 @@ export default async function FatturePage({ searchParams }: { searchParams: Sear
   const key = JSON.stringify(await searchParams);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 px-6 py-10 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">Fatture emesse</h1>
         <Button asChild>

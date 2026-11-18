@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function InvoiceNotFound() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 px-6 py-10 lg:px-10">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

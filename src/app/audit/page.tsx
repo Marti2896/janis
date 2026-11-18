@@ -69,7 +69,7 @@ export default async function AuditPage({
     };
     const tenantName = (id: string) => tenants.find((t) => t.id === id)?.denominazione ?? "Account";
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <h1 className="text-2xl font-semibold">Cronologia attività</h1>
         <form method="get" className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">

@@ -39,7 +39,7 @@ export default async function StatoPage() {
       { label: "Notifiche ricevute", value: counters.notifications, icon: Bell, href: null },
     ];
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <h1 className="text-2xl font-semibold">Stato del canale</h1>
         <Card>
           <CardHeader>

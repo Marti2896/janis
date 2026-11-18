@@ -34,6 +34,18 @@ Badge di stato (`StatusBadge`): `rounded-full`, fondo del colore al 10-15% e tes
 - rosso (destructive): Scartata, Rifiutata, Errore invio
 - ambra (warning): Mancata consegna, Termini scaduti, Esito incerto
 
+Testo dei badge tenui (token «ink», contrasto AA 4.5:1 misurato sul fondo composto; triage it.1 run #421, issue #131-#133). Il colore pieno NON va usato come testo a 12px.
+
+| Token | Chiaro | Scuro | Variante Badge |
+|---|---|---|---|
+| `--neutral-ink` | #475569 (slate 600) | #CBD5E1 (slate 300) | `neutral` = `bg-muted text-neutral-ink` |
+| `--info-ink` | #1D4ED8 (blue 700) | #93C5FD (blue 300) | `info` = `bg-primary/10 text-info-ink` |
+| `--success-ink` | #047857 circa (emerald 700) | #6EE7B7 circa | `success-soft` |
+| `--warning-ink` | #B45309 circa (amber 700) | #FDE047 circa | `warning` |
+| `--destructive-ink` | #B91C1C circa (red 700) | #FCA5A5 circa | `danger` |
+
+`--muted-foreground` resta slate 500 per testo secondario normale (non per i badge). Il badge «Valido» in /certificati usa `success-soft`, non `success` pieno (bianco su emerald 600 = 3.66:1, non passa).
+
 ## Layout (run #421)
 - Shell: sidebar fissa a sinistra larga 16rem (`w-64`) da `md` in su, fondo `bg-card` con bordo destro; sotto `md` barra superiore con hamburger che apre la stessa navigazione in un `Sheet` da sinistra.
 - Contenuto: colonna a destra della sidebar, contenitore `mx-auto w-full max-w-7xl px-6 py-10 lg:px-10` per tutte le pagine dell'app (liste, dashboard, dettagli, Nuova fattura). Restano strette (`max-w-3xl` o meno) solo login, cambia password, errore, accesso negato, non trovato.

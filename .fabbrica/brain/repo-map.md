@@ -1,11 +1,11 @@
 # Mappa del repository
-<!-- fingerprint: 863b51b:163 -->
+<!-- fingerprint: f791a6e:163 -->
 _Generata automaticamente dalla fabbrica: fotografia di stack, struttura e comandi del progetto._
 _Gli agenti la trovano già nel contesto: NON rianalizzare il progetto da zero e non riscrivere questo file._
 _Per i dettagli apri i file specifici. Le note di architettura scritte a mano restano in fondo._
 
 ## sdi-channel
-Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/sidebar-restyling-palette` · ultimo commit: 863b51b 2026-11-18 fabbrica(run #421): stato prima della squadra di «Builder»
+Percorso: `/Users/martinadagnello/Workspace/sdi-channel` · branch `feat/sidebar-restyling-palette` · ultimo commit: f791a6e 2026-11-18 fabbrica(run #421, it.0): RESTYLING ESTETICO mirato del progetto "Interscambio" (sdi-channe
 File (esclusi build e dipendenze): 163
 
 **Linguaggi**: TypeScript (81) · TypeScript (React) (55) · SQL (7) · Markdown (3) · JavaScript (3) · CSS (1)

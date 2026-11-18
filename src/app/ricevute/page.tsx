@@ -44,7 +44,7 @@ export default async function RicevutePage() {
       isAdmin ? listTenants(session.scope, undefined, { onlyActive: true }) : Promise.resolve([]),
     ]);
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <h1 className="text-2xl font-semibold">Fatture ricevute</h1>
 
         {isAdmin && (

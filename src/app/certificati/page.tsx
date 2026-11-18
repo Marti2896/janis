@@ -63,7 +63,7 @@ export default async function CertificatiPage() {
                       </TableCell>
                       <TableCell>
                         {certificateLevel(c.notAfter) === "ok" ? (
-                          <Badge variant="success">Valido</Badge>
+                          <Badge variant="success-soft">Valido</Badge>
                         ) : (
                           <CertificateBadge notAfter={c.notAfter} />
                         )}
