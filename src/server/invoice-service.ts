@@ -303,9 +303,43 @@ export function validateNewInvoice(input: NewInvoiceInput): Record<string, strin
   return e;
 }
 
+const XSD_LABELS: Record<string, string> = {
+  Descrizione: "La descrizione",
+  Denominazione: "La denominazione",
+  Indirizzo: "L'indirizzo",
+  Comune: "Il comune",
+  CAP: "Il CAP",
+  CodiceFiscale: "Il codice fiscale",
+  IdCodice: "La partita IVA",
+  CodiceDestinatario: "Il codice destinatario",
+  PECDestinatario: "La PEC del destinatario",
+  PrezzoUnitario: "Il prezzo unitario",
+  Quantita: "La quantità",
+};
+
+/** Traduce un errore dello schema XSD in una frase italiana breve, senza il valore inserito. */
+export function xsdMessageIt(path: string, message: string): string {
+  const leaf = path.split("/").filter(Boolean).pop()?.replace(/\[\d+\]$/, "") ?? "";
+  const label = XSD_LABELS[leaf] ?? "Un campo della fattura";
+  if (leaf === "Descrizione") return "La descrizione contiene caratteri non ammessi o supera il limite di 1000 caratteri.";
+  if (/pattern|maxLength|length|too long/i.test(message)) return `${label} contiene caratteri non ammessi o supera la lunghezza consentita.`;
+  return `${label} non è valido.`;
+}
+
+type TenantRowDb = {
+  id: string;
+  partita_iva: string;
+  codice_fiscale: string | null;
+  denominazione: string;
+  indirizzo: string | null;
+  cap: string | null;
+  comune: string | null;
+  provincia: string | null;
+};
+
 function toModel(
   input: NewInvoiceInput,
-  tenant: { partita_iva: string; codice_fiscale: string | null; denominazione: string },
+  tenant: TenantRowDb,
   numero: string,
   progressivo: string,
 ): FatturaModel {
@@ -331,7 +365,13 @@ function toModel(
       ...(tenant.codice_fiscale ? { codiceFiscale: tenant.codice_fiscale } : {}),
       denominazione: tenant.denominazione,
       regimeFiscale: "RF01",
-      sede: SEDE_DEFAULT,
+      sede: {
+        indirizzo: (tenant.indirizzo ?? "").trim(),
+        cap: (tenant.cap ?? "").trim(),
+        comune: (tenant.comune ?? "").trim(),
+        ...(tenant.provincia?.trim() ? { provincia: tenant.provincia.trim().toUpperCase() } : {}),
+        nazione: "IT",
+      },
     },
     cessionario: {
       idPaese: "IT",
@@ -401,9 +441,17 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
   else if (!UUID.test(tenantId)) errors.tenantId = "Account non valido";
   if (Object.keys(errors).length) return { errors };
 
-  const t = await db.query("select id, partita_iva, codice_fiscale, denominazione from tenants where id = $1", [tenantId]);
-  const tenant = t.rows[0] as { id: string; partita_iva: string; codice_fiscale: string | null; denominazione: string } | undefined;
+  const t = await db.query(
+    "select id, partita_iva, codice_fiscale, denominazione, indirizzo, cap, comune, provincia from tenants where id = $1",
+    [tenantId],
+  );
+  const tenant = t.rows[0] as TenantRowDb | undefined;
   if (!tenant) return { errors: { tenantId: "Account non trovato" } };
+  if (!tenant.indirizzo?.trim() || !tenant.cap?.trim() || !tenant.comune?.trim()) {
+    return {
+      errors: { _form: "L'indirizzo dell'account non è completo (indirizzo, CAP e comune). Chiedi all'amministratore di completarlo prima di emettere fatture." },
+    };
+  }
 
   const idemKey = input.idempotencyKey?.trim() || null;
   const bodyHash = normalizedBody(input);
@@ -426,7 +474,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
     const s = await db.query("select status from invoices where id = $1", [x.invoice_id]);
     const status = s.rows[0]?.status as string;
     return status === "signed"
-      ? { id: x.invoice_id as string, status, queued: true, warning: "Fattura in coda: l'endpoint SdI dell'ambiente attivo non e configurato.", replay: true }
+      ? { id: x.invoice_id as string, status, queued: true, warning: "Fattura in coda: l'endpoint SdI dell'ambiente attivo non è configurato.", replay: true }
       : { id: x.invoice_id as string, status, replay: true };
   };
   const already = await replay();
@@ -477,7 +525,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
     const built = await buildFatturaXml(toModel(input, tenant, numero, progressivo));
     if (!built.ok) {
       await client.query("rollback");
-      const detail = built.errors.slice(0, 3).map((x) => `${x.path}: ${x.message}`).join("; ");
+      const detail = Array.from(new Set(built.errors.slice(0, 3).map((x) => xsdMessageIt(x.path, x.message)))).join(" ");
       return { errors: { _xsd: detail } };
     }
     p7m = await signCadesBes(built.xml, cert);
@@ -543,7 +591,7 @@ export async function createAndSendInvoice(scope: Scope, input: NewInvoiceInput,
 
   // Invio fuori dalla transazione: la fattura esiste gia, firmata, e resta recuperabile.
   if (!settings.endpoint) {
-    return { id: invoiceId, status: "signed", queued: true, warning: "Fattura in coda: l'endpoint SdI dell'ambiente attivo non e configurato." };
+    return { id: invoiceId, status: "signed", queued: true, warning: "Fattura in coda: l'endpoint SdI dell'ambiente attivo non è configurato." };
   }
   const sent = await emitInvoice(
     { invoiceId, nomeFile, p7m },

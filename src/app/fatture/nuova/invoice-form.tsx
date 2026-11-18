@@ -19,7 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NATURE_OPTIONS } from "@/lib/nature-iva";
-import { createInvoiceAction, type NewInvoiceState } from "./actions";
+import { createInvoiceAction, validateInvoiceAction, type NewInvoiceState } from "./actions";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -30,7 +30,20 @@ interface Props {
   idempotencyKey: string;
   today: string;
   role: "admin" | "cliente";
-  tenants: { id: string; denominazione: string }[];
+  tenants: {
+    id: string;
+    denominazione: string;
+    partitaIva: string;
+    indirizzo: string | null;
+    cap: string | null;
+    comune: string | null;
+    provincia: string | null;
+  }[];
+}
+
+function sedeText(t: Props["tenants"][number] | undefined): string {
+  if (!t?.indirizzo || !t.cap || !t.comune) return "Indirizzo non ancora indicato";
+  return `${t.indirizzo}, ${t.cap} ${t.comune}${t.provincia ? ` (${t.provincia})` : ""}`;
 }
 
 interface Row {
@@ -82,8 +95,12 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
   const [nextId, setNextId] = useState(1);
   const [destTipo, setDestTipo] = useState("codice");
   const [summary, setSummary] = useState<FormData | null>(null);
-  const e = state.fieldErrors;
+  const [pre, setPre] = useState<Record<string, string>>({});
+  const [checking, setChecking] = useState(false);
+  const [tenantSel, setTenantSel] = useState("");
+  const e = Object.keys(pre).length ? pre : state.fieldErrors;
   const tot = totals(rows);
+  const cedente = role === "admin" ? tenants.find((t) => t.id === tenantSel) : tenants[0];
 
   function patchRow(id: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -91,16 +108,24 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
 
   function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
-    if (pending) return;
+    if (pending || checking) return;
     const fd = new FormData(ev.currentTarget);
     fd.set("righe.count", String(rows.length));
-    setSummary(fd);
+    setChecking(true);
+    validateInvoiceAction(fd)
+      .then((res) => {
+        setPre(res.fieldErrors);
+        if (Object.keys(res.fieldErrors).length === 0 && !res.error) setSummary(fd);
+      })
+      .catch(() => setSummary(fd))
+      .finally(() => setChecking(false));
   }
 
   function confirmSend() {
     if (!summary || pending) return;
     const fd = summary;
     setSummary(null);
+    setPre({});
     startTransition(() => action(fd));
   }
 
@@ -140,7 +165,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
           {role === "admin" ? (
             <>
               <Label htmlFor="tenantId">Account</Label>
-              <Select name="tenantId">
+              <Select name="tenantId" value={tenantSel} onValueChange={setTenantSel}>
                 <SelectTrigger id="tenantId" className="w-full" aria-invalid={e["tenantId"] ? true : undefined}>
                   <SelectValue placeholder="Seleziona un account" />
                 </SelectTrigger>
@@ -154,11 +179,22 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants }: Props) {
               </Select>
               <FieldError message={e["tenantId"]} />
             </>
-          ) : (
-            <>
-              <Label htmlFor="cedente">Denominazione</Label>
-              <Input id="cedente" value={tenants[0]?.denominazione ?? ""} readOnly disabled />
-            </>
+          ) : null}
+          {cedente && (
+            <dl className="grid gap-1 text-sm" data-testid="cedente">
+              <div className="flex flex-wrap gap-2">
+                <dt className="text-muted-foreground">Denominazione</dt>
+                <dd className="font-medium">{cedente.denominazione}</dd>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <dt className="text-muted-foreground">Partita IVA</dt>
+                <dd className="font-mono">{cedente.partitaIva}</dd>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <dt className="text-muted-foreground">Sede</dt>
+                <dd>{sedeText(cedente)}</dd>
+              </div>
+            </dl>
           )}
         </CardContent>
       </Card>

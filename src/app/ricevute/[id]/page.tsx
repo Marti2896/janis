@@ -12,7 +12,7 @@ import {
   type FatturaLetta,
   type ParteFattura,
 } from "@/sdi/fatturapa/parse";
-import { formatDateShort, formatEuro } from "@/lib/format";
+import { formatDateShort, formatDateTime, formatEuro } from "@/lib/format";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -224,6 +224,40 @@ export default async function RicevutaDettaglioPage({ params }: { params: Promis
             </section>
           ))}
         </>
+      )}
+
+      {r.notifications.length > 0 && (
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-lg">Notifiche SdI</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data e ora</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Esito</TableHead>
+                    <TableHead>Descrizione</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {r.notifications.map((n, k) => (
+                    <TableRow key={k}>
+                      <TableCell className="whitespace-nowrap">{formatDateTime(n.at)}</TableCell>
+                      <TableCell>{n.type === "SE" ? "Scarto esito committente (SE)" : n.type}</TableCell>
+                      <TableCell>
+                        {n.esito ? <Badge variant={n.esito === "EN01" ? "destructive" : "outline"}>{n.esito}</Badge> : "-"}
+                      </TableCell>
+                      <TableCell>{n.descrizione ?? "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card className="min-w-0">

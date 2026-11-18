@@ -46,6 +46,8 @@ function TempPassword({ state }: { state: AccountState }) {
 export function NewAccountDialog() {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createAccountAction, initial);
+  // Campi controllati: dopo un errore del server React azzera i campi non controllati.
+  const [values, setValues] = useState<Record<string, string>>({});
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -75,22 +77,29 @@ export function NewAccountDialog() {
                 Crea l&apos;azienda e il suo primo utente.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="denominazione">Denominazione</Label>
-              <Input id="denominazione" name="denominazione" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="partitaIva">Partita IVA</Label>
-              <Input id="partitaIva" name="partitaIva" inputMode="numeric" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="codiceFiscale">Codice fiscale (opzionale)</Label>
-              <Input id="codiceFiscale" name="codiceFiscale" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email del primo utente</Label>
-              <Input id="email" name="email" type="email" required />
-            </div>
+            {(
+              [
+                ["denominazione", "Denominazione", {}],
+                ["partitaIva", "Partita IVA", { inputMode: "numeric" }],
+                ["codiceFiscale", "Codice fiscale (opzionale)", {}],
+                ["indirizzo", "Indirizzo della sede", {}],
+                ["cap", "CAP", { inputMode: "numeric", maxLength: 5 }],
+                ["comune", "Comune", {}],
+                ["provincia", "Provincia (sigla)", { maxLength: 2 }],
+                ["email", "Email del primo utente", { type: "email" }],
+              ] as const
+            ).map(([name, label, extra]) => (
+              <div key={name} className="space-y-2">
+                <Label htmlFor={name}>{label}</Label>
+                <Input
+                  id={name}
+                  name={name}
+                  value={values[name] ?? ""}
+                  onChange={(ev) => setValues((v) => ({ ...v, [name]: ev.target.value }))}
+                  {...extra}
+                />
+              </div>
+            ))}
             {state.error && (
               <Alert variant="destructive">
                 <AlertDescription>{state.error}</AlertDescription>

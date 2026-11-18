@@ -81,7 +81,7 @@ describe.skipIf(!dbReady)("servizio fatture e API v1", () => {
   let sdiMode: "ok" | "fault" = "ok";
 
   async function mk(name: string) {
-    const t = await createTenant(admin, { denominazione: `${name} ${tag}`, partitaIva: rnd(11), email: `${name}-${tag}@interscambio.test` }, null, pool);
+    const t = await createTenant(admin, { denominazione: `${name} ${tag}`, partitaIva: rnd(11), indirizzo: "Via Prova 1", cap: "00100", comune: "Roma", provincia: "RM", email: `${name}-${tag}@interscambio.test` }, null, pool);
     const scope: Scope = { role: "cliente", tenantId: t.tenant.id };
     const k = await createApiKey(scope, { name: "crm" }, t.user.id, pool);
     return { id: t.tenant.id, scope, secret: k.secret, keyId: k.key.id, userId: t.user.id };
@@ -192,7 +192,7 @@ describe.skipIf(!dbReady)("servizio fatture e API v1", () => {
     expect(await getInvoice(B.scope, r.id, { db: pool })).toBeNull();
     expect(await getInvoiceFile(B.scope, r.id, { db: pool })).toBeNull();
     expect((await listInvoices(B.scope, { tenantId: A.id }, { db: pool })).every((i) => i.tenantId === B.id)).toBe(true);
-    expect((await listInvoices(admin, {}, { db: pool })).some((i) => i.id === r.id)).toBe(true);
+    expect(await getInvoice(admin, r.id, { db: pool })).not.toBeNull();
     const c = await channelCounters(B.scope, { db: pool });
     expect(c.recentErrors.every((e) => e.invoiceId !== r.id)).toBe(true);
   });

@@ -17,8 +17,8 @@ function ensureMasterKey(): void {
 }
 
 const TENANTS = [
-  { piva: "01234567890", name: "Alfa Srl", cf: "01234567890", prefix: "alfa", email: "cliente.alfa@interscambio.test" },
-  { piva: "09876543210", name: "Beta Spa", cf: "09876543210", prefix: "beta", email: "cliente.beta@interscambio.test" },
+  { piva: "01234567890", name: "Alfa Srl", cf: "01234567890", prefix: "alfa", email: "cliente.alfa@interscambio.test", indirizzo: "Via Roma 1", cap: "20121", comune: "Milano", provincia: "MI" },
+  { piva: "09876543210", name: "Beta Spa", cf: "09876543210", prefix: "beta", email: "cliente.beta@interscambio.test", indirizzo: "Via Torino 20", cap: "10121", comune: "Torino", provincia: "TO" },
 ];
 const INVOICES = [
   { n: "1/2026", data: "2026-01-15", status: "delivered", sdi: 1 },
@@ -40,10 +40,12 @@ try {
   let created = 0;
   for (const [i, t] of TENANTS.entries()) {
     const r = await pool.query(
-      `insert into tenants (partita_iva, denominazione, codice_fiscale) values ($1, $2, $3)
-       on conflict (partita_iva) do update set denominazione = excluded.denominazione, codice_fiscale = excluded.codice_fiscale
+      `insert into tenants (partita_iva, denominazione, codice_fiscale, indirizzo, cap, comune, provincia) values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (partita_iva) do update set denominazione = excluded.denominazione, codice_fiscale = excluded.codice_fiscale,
+         indirizzo = coalesce(tenants.indirizzo, excluded.indirizzo), cap = coalesce(tenants.cap, excluded.cap),
+         comune = coalesce(tenants.comune, excluded.comune), provincia = coalesce(tenants.provincia, excluded.provincia)
        returning id`,
-      [t.piva, t.name, t.cf],
+      [t.piva, t.name, t.cf, t.indirizzo, t.cap, t.comune, t.provincia],
     );
     const tenantId = r.rows[0].id as string;
     await upsertUser(t.email, "Cliente-dev-2026!", "cliente", tenantId);

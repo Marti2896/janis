@@ -193,6 +193,8 @@ export type ReceivedDetail = ReceivedRow & {
   /** File originale, byte per byte. */
   bytes: Buffer;
   contentType: string;
+  /** Notifiche SdI registrate sulla fattura (es. SE con esito EN00 o EN01). */
+  notifications: { type: string; esito: string | null; descrizione: string | null; at: Date }[];
   history: { event: string; at: Date; detail: Record<string, unknown> }[];
 };
 
@@ -257,9 +259,20 @@ export async function getReceivedDetail(scope: Scope, id: string, db: Pick<pg.Po
     "select event, recorded_at, detail from received_invoice_history where received_invoice_id = $1 order by recorded_at, id",
     [id],
   );
+  const n = await db.query(
+    `select type, esito, descrizione, received_at from sdi_notifications
+      where received_invoice_id = $1 ${tenant ? "and tenant_id = $2" : ""} order by received_at, id`,
+    tenant ? [id, tenant] : [id],
+  );
   const row = toRow(x);
   return {
     ...row,
+    notifications: n.rows.map((e) => ({
+      type: e.type as string,
+      esito: (e.esito as string | null) ?? null,
+      descrizione: (e.descrizione as string | null) ?? null,
+      at: e.received_at as Date,
+    })),
     bytes: x.original_bytes as Buffer,
     contentType: row.fileKind === "p7m" ? "application/pkcs7-mime" : "application/xml",
     history: h.rows.map((e) => ({ event: e.event as string, at: e.recorded_at as Date, detail: e.detail as Record<string, unknown> })),

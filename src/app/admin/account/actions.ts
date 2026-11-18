@@ -22,7 +22,14 @@ export async function createAccountAction(
   const partitaIva = String(formData.get("partitaIva") ?? "").trim();
   const codiceFiscale = String(formData.get("codiceFiscale") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const indirizzo = String(formData.get("indirizzo") ?? "").trim();
+  const cap = String(formData.get("cap") ?? "").trim();
+  const comune = String(formData.get("comune") ?? "").trim();
+  const provincia = String(formData.get("provincia") ?? "").trim().toUpperCase();
   if (!denominazione) return { ok: false, error: "La denominazione è obbligatoria." };
+  if (!indirizzo || !comune) return { ok: false, error: "Indirizzo e comune della sede sono obbligatori." };
+  if (!/^\d{5}$/.test(cap)) return { ok: false, error: "Il CAP deve avere 5 cifre." };
+  if (provincia && !/^[A-Z]{2}$/.test(provincia)) return { ok: false, error: "La provincia deve avere 2 lettere." };
   if (!/^\d{11}$/.test(partitaIva))
     return { ok: false, error: "La partita IVA deve avere 11 cifre." };
   if (!/^\S+@\S+\.\S+$/.test(email))
@@ -31,7 +38,7 @@ export async function createAccountAction(
   try {
     const res = await createTenant(
       session.scope,
-      { denominazione, partitaIva, codiceFiscale: codiceFiscale || null, email },
+      { denominazione, partitaIva, codiceFiscale: codiceFiscale || null, email, indirizzo, cap, comune, provincia: provincia || null },
       session.user.id,
     );
     password = res.temporaryPassword;

@@ -10,6 +10,7 @@ Le sezioni "Run #N" in fondo vengono aggiunte automaticamente dagli artefatti `a
 - Variabili: `DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel`, `SDI_ENV`, `SDI_DEMO_TRASMISSIONE_URL` (vuoto = la nuova fattura resta in coda con un avviso, non è un errore), `SDI_RETRY_*`, `SECRETS_MASTER_KEY` (chiave AES-256-GCM per i certificati; in sviluppo la genera il seed in `.env` se manca, mai nel repo).
 - Migrazioni: `npm run db:migrate` applica in ordine `db/migrations/*.sql` (0001, 0002 schema SDICoop, 0006 utenti/sessioni/API key/certificati/canale, 0007 stati estesi, notifiche MC/NE/DT/SE, fatture passive, contatori numerazione, idempotenza API). Tracciate in `schema_migrations`.
 - Seed: `npm run db:seed` (idempotente, vedi sotto).
+- Attenzione `.env`: `scripts/dev.mjs` legge `.env` una sola volta all'avvio e passa quell'ambiente ai figli. Una variabile aggiunta dopo (es. `SECRETS_MASTER_KEY` scritta dal seed) NON arriva all'API finché la preview non viene riavviata, anche se `--watch` riavvia il processo Fastify. Sintomo: POST fatture risponde 500 «SECRETS_MASTER_KEY non configurata». Run #406: preview partita alle 09:14, chiave scritta alle 09:44. Correzione in corso (issue #85): `server/index.ts` carica `.env` da sé all'avvio.
 - Dev server: `npm run dev` avvia web (Next 16) e API (Fastify) con `WEB_PORT=4810` e `API_PORT=4811`. Gli agenti NON lo avviano a mano: la preview è dell'infrastruttura e gira con `SDI_ENV=demo`. Se serve un riavvio (es. dopo una migrazione o una nuova dipendenza), scriverlo nel summary.
 - URL: web http://127.0.0.1:4810, API http://127.0.0.1:4811 (`/health`, `/api/v1/health`).
 - Controllo rapido: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4810/login` = 200; `/fatture` senza cookie = 307 verso /login; `curl http://127.0.0.1:4811/health` = 200.
@@ -90,3 +91,14 @@ Non si prova sulla preview (gira in demo, non va riconfigurata). Coperto da test
 - Loop di ricaricamento di /login (issue #58, risolto in it.7): causa era Tailwind che scansionava la radice del progetto più l'inoltro dei log del browser. Correzione in `globals.css` (`source("../")`) e `next.config.ts` (`logging.browserToTerminal: false`). Prima del QA: aprire /login e aspettare 10 secondi; se compaiono Fast Refresh ripetuti senza modifiche, aprire UNA sola issue question. L'avviso di idratazione su `<body inject_vt_svd>` è un'estensione del browser.
 - Il typecheck può segnalare errori in `.next/types/validator.ts` (file generato dalla preview): non sono errori dei sorgenti.
 - Preview su 127.0.0.1 e idratazione: Next 16 in dev blocca con 403 gli asset `/_next/*` richiesti da origini diverse da `localhost` (`allowedDevOrigins`). Senza `allowedDevOrigins: ['127.0.0.1']` in `next.config.ts` la pagina arriva dal server ma React non si idrata (menu, Dialog, Select e form non rispondono, i form fanno GET). Controllo rapido: `curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: same-origin" -H "Sec-Fetch-Mode: no-cors" http://127.0.0.1:4810/_next/static/chunks/<un chunk .js preso dall'HTML>` deve dare 200, non 403. Dopo una modifica a `next.config.ts` la preview va riavviata dall'infrastruttura.
+
+
+## Run #406 · builder · Sede dei tenant: migrazione 0008 e seed
+
+## Avvio dati
+- `export DATABASE_URL=postgres://sdi:sdi_dev_only@localhost:54320/sdi_channel`
+- `node scripts/migrate.mjs` applica 0008_tenant_sede.sql (colonne indirizzo, cap, comune, provincia su tenants).
+- `npm run db:seed` riempie la sede dei tenant di test solo se vuota: Alfa Srl = Via Roma 1, 20121 Milano (MI); Beta Spa = Via Torino 20, 10121 Torino (TO).
+
+## Comportamento
+Un tenant senza indirizzo, CAP e comune non può emettere fatture (messaggio nel form e 422 in API con campo _form). I nuovi account creati da /admin/account richiedono indirizzo, CAP (5 cifre), comune e provincia opzionale. Nessuna nuova variabile d'ambiente.

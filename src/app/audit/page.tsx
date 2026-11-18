@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AUDIT_CATEGORIES, auditActionLabel, auditErrorReason } from "@/lib/audit-labels";
+import { AUDIT_CATEGORIES, auditActionLabel, auditChangeLines, auditErrorReason } from "@/lib/audit-labels";
 import { Badge } from "@/components/ui/badge";
 import { requireSession } from "@/lib/session";
 import { listAudit } from "@/server/audit";
@@ -142,7 +142,14 @@ export default async function AuditPage({
                           <span className="text-muted-foreground">Sistema</span>
                         )}
                       </TableCell>
-                      <TableCell>{auditActionLabel(r.event, r.detail)}</TableCell>
+                      <TableCell>
+                        {auditActionLabel(r.event, r.detail)}
+                        {auditChangeLines(r.event, r.detail).map((line) => (
+                          <span key={line} className="block text-xs text-muted-foreground">
+                            {line}
+                          </span>
+                        ))}
+                      </TableCell>
                       <TableCell>
                         {r.objectLabel ? (
                           r.objectHref ? (

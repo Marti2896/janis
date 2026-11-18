@@ -51,6 +51,17 @@ async function InvoicesTable({ scope, searchParams }: { scope: Scope; searchPara
     return `/fatture?${u.toString()}`;
   };
 
+  if (rows.length === 0 && page > 1) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-10 text-center">
+        <p className="text-muted-foreground">Questa pagina non esiste: non ci sono altre fatture.</p>
+        <Button asChild variant="outline">
+          <Link href={pageHref(1)}>Torna alla prima pagina</Link>
+        </Button>
+      </div>
+    );
+  }
+
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">

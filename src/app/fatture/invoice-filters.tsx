@@ -55,7 +55,6 @@ export function InvoiceFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tutti</SelectItem>
-            <SelectItem value="errors">Con errori</SelectItem>
             {STATUS_FILTERS.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}

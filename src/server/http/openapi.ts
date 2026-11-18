@@ -54,7 +54,7 @@ export const openApiDocument = {
       post: {
         summary: "Crea, firma e invia una fattura",
         description:
-          "Il numero fattura e assegnato dal server (progressivo per anno). Con Idempotency-Key, la stessa chiave con lo stesso corpo restituisce la risposta originale (200); con corpo diverso 409. La chiave vale 24 ore.",
+          "Il numero fattura è assegnato dal server (progressivo per anno). Con Idempotency-Key, la stessa chiave con lo stesso corpo restituisce la risposta originale (200); con corpo diverso 409. La chiave vale 24 ore.",
         parameters: [{ name: "Idempotency-Key", in: "header", required: false, schema: { type: "string", maxLength: 128 } }],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/NewInvoice" } } } },
         responses: {

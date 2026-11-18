@@ -11,12 +11,17 @@ export type TenantRow = {
   partitaIva: string;
   codiceFiscale: string | null;
   denominazione: string;
+  indirizzo: string | null;
+  cap: string | null;
+  comune: string | null;
+  provincia: string | null;
   usersCount: number;
   activeUsersCount: number;
   createdAt: Date;
 };
 
 const SELECT = `select t.id, t.partita_iva, t.codice_fiscale, t.denominazione, t.created_at,
+  t.indirizzo, t.cap, t.comune, t.provincia,
   (select count(*)::int from users u where u.tenant_id = t.id) as users_count,
   (select count(*)::int from users u where u.tenant_id = t.id and u.disabled_at is null) as active_users_count
   from tenants t`;
@@ -26,6 +31,10 @@ const map = (x: Record<string, unknown>): TenantRow => ({
   partitaIva: (x.partita_iva as string).trim(),
   codiceFiscale: (x.codice_fiscale as string | null) ?? null,
   denominazione: x.denominazione as string,
+  indirizzo: (x.indirizzo as string | null) ?? null,
+  cap: (x.cap as string | null) ?? null,
+  comune: (x.comune as string | null) ?? null,
+  provincia: (x.provincia as string | null) ?? null,
   usersCount: x.users_count as number,
   activeUsersCount: x.active_users_count as number,
   createdAt: x.created_at as Date,
@@ -48,7 +57,7 @@ export async function getTenant(scope: Scope, id: string, db: Db = getPool()): P
   return r.rows[0] ? map(r.rows[0]) : null;
 }
 
-export type NewTenantInput = { denominazione: string; partitaIva: string; codiceFiscale?: string | null; email: string };
+export type NewTenantInput = { denominazione: string; partitaIva: string; codiceFiscale?: string | null; email: string; indirizzo?: string | null; cap?: string | null; comune?: string | null; provincia?: string | null };
 
 /** Crea tenant e primo utente cliente (password temporanea mostrata una sola volta). Solo admin. */
 export async function createTenant(
@@ -67,8 +76,8 @@ export async function createTenant(
   const dup = await db.query("select 1 from tenants where partita_iva = $1", [piva]);
   if (dup.rowCount) throw new ValidationError("Esiste già un account con questa partita IVA.", "partitaIva");
   const r = await db.query(
-    "insert into tenants (partita_iva, denominazione, codice_fiscale) values ($1, $2, $3) returning id",
-    [piva, denominazione, cf],
+    "insert into tenants (partita_iva, denominazione, codice_fiscale, indirizzo, cap, comune, provincia) values ($1, $2, $3, $4, $5, $6, $7) returning id",
+    [piva, denominazione, cf, input.indirizzo?.trim() || null, input.cap?.trim() || null, input.comune?.trim() || null, input.provincia?.trim().toUpperCase() || null],
   );
   const id = r.rows[0].id as string;
   await logEvent({ tenantId: id, actorUserId, event: "tenant.created", entity: "tenant", entityId: id, detail: { denominazione, partitaIva: piva } }, db);

@@ -51,6 +51,7 @@ const ERROR_REASON: Record<string, string> = {
   "auth.login_locked": "Troppi tentativi: accesso sospeso per 15 minuti",
   "received_invoice.rejected": "File non valido o non leggibile",
   "notification.rejected": "Notifica non valida",
+  "api.invoice.post": "Invio non riuscito: dati non validi o nome file già usato",
 };
 
 export function auditErrorReason(event: string, detail: Record<string, unknown>): string | null {
@@ -63,3 +64,22 @@ export const AUDIT_CATEGORIES = [
   { value: "accessi", label: "Accessi" },
   { value: "api", label: "API" },
 ] as const;
+
+type Settings = { environment?: string; endpoints?: Record<string, string> };
+
+/** Righe di dettaglio leggibili (valori precedenti e nuovi) per le modifiche alla configurazione del canale. */
+export function auditChangeLines(event: string, detail: Record<string, unknown>): string[] {
+  if (event !== "channel.settings_changed") return [];
+  const before = (detail.before ?? {}) as Settings;
+  const after = (detail.after ?? {}) as Settings;
+  const env = (v?: string) => (v === "production" ? "Produzione" : v === "demo" ? "Demo" : "-");
+  const val = (v?: string) => (v ? v : "(vuoto)");
+  const lines: string[] = [];
+  if (before.environment !== after.environment) lines.push(`Ambiente: ${env(before.environment)} → ${env(after.environment)}`);
+  for (const k of ["demo", "production"]) {
+    const b = before.endpoints?.[k] ?? "";
+    const a = after.endpoints?.[k] ?? "";
+    if (a !== b) lines.push(`Endpoint ${k === "demo" ? "demo" : "produzione"}: ${val(b)} → ${val(a)}`);
+  }
+  return lines;
+}

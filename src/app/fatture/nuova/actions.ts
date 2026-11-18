@@ -21,7 +21,16 @@ function num(value: string): number {
   return Number(value.replace(",", "."));
 }
 
+/** Solo controlli sui campi (nessuna fattura creata): serve ad aprire il riepilogo solo quando il form è valido. */
+export async function validateInvoiceAction(formData: FormData): Promise<NewInvoiceState> {
+  return runInvoiceAction(formData, true);
+}
+
 export async function createInvoiceAction(_prev: NewInvoiceState, formData: FormData): Promise<NewInvoiceState> {
+  return runInvoiceAction(formData, false);
+}
+
+async function runInvoiceAction(formData: FormData, validateOnly: boolean): Promise<NewInvoiceState> {
   const { user, scope } = await requireSession("/fatture/nuova");
   const errors: Record<string, string> = {};
 
@@ -75,6 +84,7 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
     const aliquota = num(str(formData, `righe.${i}.aliquota`));
     const natura = str(formData, `righe.${i}.natura`);
     if (!descrizione) errors[`righe.${i}.descrizione`] = "La descrizione è obbligatoria";
+    else if (descrizione.length > 1000) errors[`righe.${i}.descrizione`] = "La descrizione supera il limite di 1000 caratteri";
     if (!Number.isFinite(quantita) || quantita <= 0) errors[`righe.${i}.quantita`] = "La quantità deve essere maggiore di zero";
     if (!Number.isFinite(prezzoUnitario) || prezzoUnitario < 0) errors[`righe.${i}.prezzoUnitario`] = "Prezzo non valido";
     if (!ALIQUOTE.includes(aliquota)) errors[`righe.${i}.aliquota`] = "Aliquota non valida";
@@ -82,8 +92,10 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
     righe.push({ descrizione, quantita, prezzoUnitario, aliquota, ...(aliquota === 0 ? { natura } : {}) });
   }
   if (righe.length === 0) return { fieldErrors: errors, error: "Aggiungi almeno una riga." };
+  if (validateOnly && Object.keys(errors).length > 0) return { fieldErrors: errors, error: null };
 
   if (Object.keys(errors).length > 0) return { fieldErrors: errors, error: null };
+  if (validateOnly) return { fieldErrors: {}, error: null };
 
   const idempotencyKey = str(formData, "idempotencyKey");
   let result: Awaited<ReturnType<typeof createAndSendInvoice>>;
@@ -104,7 +116,8 @@ export async function createInvoiceAction(_prev: NewInvoiceState, formData: Form
   }
 
   if (!result.ok) {
-    if (result.path) return { fieldErrors: {}, error: `${result.error} (campo: ${result.path})` };
+    if (result.path === "descrizione" || result.path?.startsWith("righe")) return { fieldErrors: {}, error: result.error };
+    if (result.path && !result.path.startsWith("_")) return { fieldErrors: {}, error: `${result.error} (campo: ${result.path})` };
     return { fieldErrors: {}, error: result.error };
   }
   redirect(`/fatture/${result.invoiceId}${result.queued ? "?coda=1" : ""}`);

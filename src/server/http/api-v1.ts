@@ -131,7 +131,21 @@ export function registerApiV1(app: FastifyInstance, deps: { pool: pg.Pool }): vo
               event: "api.invoice.post",
               entity: "api_key",
               entityId: auth.keyId,
-              detail: { httpStatus: code, invoiceId: "id" in res ? res.id : null, replay: "replay" in res ? Boolean(res.replay) : false },
+              detail: {
+                httpStatus: code,
+                invoiceId: "id" in res ? res.id : null,
+                replay: "replay" in res ? Boolean(res.replay) : false,
+                ...(code >= 300
+                  ? {
+                      error:
+                        code === 409
+                          ? "Chiave di idempotenza o nome file già usati"
+                          : code === 422
+                            ? "Dati della fattura non validi"
+                            : "Invio non riuscito",
+                    }
+                  : {}),
+              },
               outcome: code < 300 ? "ok" : "error",
             },
             db,

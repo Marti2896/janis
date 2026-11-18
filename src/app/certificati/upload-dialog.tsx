@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,15 @@ export function UploadDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form action={action} className="space-y-4">
+        <form
+          onSubmit={(ev) => {
+            // Niente action sul form: React lo azzererebbe e il file scelto andrebbe perso dopo un errore.
+            ev.preventDefault();
+            const fd = new FormData(ev.currentTarget);
+            startTransition(() => action(fd));
+          }}
+          className="space-y-4"
+        >
           <DialogHeader>
             <DialogTitle>Carica certificato</DialogTitle>
             <DialogDescription>

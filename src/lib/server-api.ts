@@ -88,6 +88,11 @@ export type CreateInvoiceResult =
 export interface TenantOption {
   id: string;
   denominazione: string;
+  partitaIva: string;
+  indirizzo: string | null;
+  cap: string | null;
+  comune: string | null;
+  provincia: string | null;
 }
 
 const toRow = (r: invoiceServiceModule.InvoiceRow): InvoiceRow => ({
@@ -184,5 +189,13 @@ export async function createAndSendInvoice(
 
 export async function listTenants(scope: Scope): Promise<TenantOption[]> {
   const rows = await tenantsModule.listTenants(scope);
-  return rows.map((t) => ({ id: t.id, denominazione: t.denominazione }));
+  return rows.map((t) => ({
+    id: t.id,
+    denominazione: t.denominazione,
+    partitaIva: t.partitaIva,
+    indirizzo: t.indirizzo,
+    cap: t.cap,
+    comune: t.comune,
+    provincia: t.provincia,
+  }));
 }
