@@ -522,6 +522,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">#</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">Prezzo</TableHead>
@@ -531,6 +532,7 @@ export function InvoiceForm({ idempotencyKey, today, role, tenants, prefill }: P
               <TableBody>
                 {summaryRows.map((r, i) => (
                   <TableRow key={i}>
+                    <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                     <TableCell>{r.descrizione}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{r.quantita}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{eur.format(parseNum(r.prezzo))}</TableCell>

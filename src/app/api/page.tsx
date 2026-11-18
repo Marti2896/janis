@@ -28,10 +28,10 @@ export default async function ApiPage() {
       isAdmin ? listTenants(session.scope, undefined, { onlyActive: true }) : Promise.resolve([]),
     ]);
     return (
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-6 py-10 lg:px-10">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">API</h1>
+            <h1 className="text-2xl font-semibold">API e chiavi</h1>
             <p className="text-sm text-muted-foreground">
               Le chiavi servono a collegare il tuo gestionale o CRM: crea una chiave e consegnala al tuo tecnico.
             </p>
@@ -61,6 +61,7 @@ export default async function ApiPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Prefisso</TableHead>
                     <TableHead>Creata il</TableHead>
@@ -70,8 +71,9 @@ export default async function ApiPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {keys.map((k) => (
+                  {keys.map((k, i) => (
                     <TableRow key={k.id}>
+                      <TableCell className="w-12 text-muted-foreground tabular-nums">{i + 1}</TableCell>
                       <TableCell>{k.name}</TableCell>
                       <TableCell className="font-mono">{k.prefix}</TableCell>
                       <TableCell>{fmt(k.createdAt)}</TableCell>
