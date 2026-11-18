@@ -162,7 +162,7 @@ function SidebarContent({
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-9 items-center gap-2.5 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
-                active && "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary",
+                active && "bg-primary/10 font-medium text-info-ink hover:bg-primary/10 hover:text-info-ink",
               )}
             >
               <item.icon className="size-4 shrink-0" />
@@ -185,7 +185,7 @@ function SidebarContent({
     <div className="flex h-full flex-col">
       <Link href="/fatture" className="flex h-14 shrink-0 items-center gap-2 px-5 text-base font-semibold tracking-tight">
         <Network className="size-5 text-primary" />
-        Interscambio
+        Janis
       </Link>
       <nav aria-label="Navigazione principale" className="flex-1 overflow-y-auto px-3 py-2">
         {groups.map(renderGroup)}
@@ -234,7 +234,7 @@ export function AppShell({
             </Sheet>
             <Link href="/fatture" className="flex items-center gap-2 font-semibold">
               <Network className="size-5 text-primary" />
-              Interscambio
+              Janis
             </Link>
             <div className="ml-auto">
               <UserMenu user={user} variant="bar" />

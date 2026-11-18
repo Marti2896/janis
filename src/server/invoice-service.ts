@@ -427,7 +427,7 @@ async function signingCert(environment: "demo" | "production", db: pg.Pool): Pro
   const real = await getActiveCertificate(environment, db);
   if (real) return real;
   if (environment === "production") return null;
-  if (!testCert || Date.now() - testCert.at > 12 * 3600 * 1000) testCert = { cert: generateTestCert("Interscambio test"), at: Date.now() };
+  if (!testCert || Date.now() - testCert.at > 12 * 3600 * 1000) testCert = { cert: generateTestCert("Janis test"), at: Date.now() };
   return testCert.cert;
 }
 
