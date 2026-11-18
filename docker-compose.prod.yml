@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - WEB_PORT=3000
+      - API_PORT=4000
+      - DATABASE_URL=postgres://janis:${POSTGRES_PASSWORD}@postgres:5432/janis
+      - REDIS_URL=redis://redis:6379
+      - SDI_ENV=${SDI_ENV:-demo}
+      - SECRETS_MASTER_KEY=${SECRETS_MASTER_KEY}
+      - LOG_LEVEL=info
+    ports:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: janis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: janis
+    volumes:
+      - janis-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janis -d janis"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  janis-pgdata:
